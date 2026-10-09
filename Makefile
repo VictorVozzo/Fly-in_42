@@ -6,7 +6,7 @@
 #    By: vivozzo- <vivozzo-@student.42porto.com>    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 0026/09/18 16:01:03 by ivozzo-           #+#    #+#              #
-#    Updated: 2026/10/07 22:54:49 by vivozzo-         ###   ########.fr        #
+#    Updated: 2026/10/09 12:13:05 by vivozzo-         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -43,7 +43,7 @@ install: $(VENV_BIN)/activate
 run:
 	@$(PYTHON) $(MAIN) $(ARGS) 
 
-visual: #install
+visual:
 	@$(PYTHON) $(MAIN) $(ARGS) --visual_output
 
 benchmark: 
@@ -70,4 +70,4 @@ fclean: clean
 
 re: fclean all
 
-.PHONY: all install run debug clean fclean lint lint-strict
+.PHONY: all install run debug clean fclean lint lint-strict visual benchmark
