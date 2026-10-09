@@ -1,0 +1,16 @@
+# *************************************************************************** #
+#                                                                             #
+#                                                         :::      ::::::::   #
+#   models.py                                           :+:      :+:    :+:   #
+#                                                     +:+ +:+         +:+     #
+#   By: vivozzo- <vivozzo-@student.42porto.com>     +#+  +:+       +#+        #
+#                                                 +#+#+#+#+#+   +#+           #
+#   Created: 2026/09/22 11:21:45 by vivozzo-           #+#    #+#             #
+#   Updated: 2026/09/24 19:35:20 by vivozzo-          ###   ########.fr       #
+#                                                                             #
+# *************************************************************************** #
+
+from .terminal import TerminalOutput
+from .visual import VisualOutput
+
+__all__ = ["TerminalOutput", "VisualOutput"]
