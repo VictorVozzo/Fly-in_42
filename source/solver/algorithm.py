@@ -373,6 +373,7 @@ class Solver:
                                            flag_first_drone):
                     first_try = self.dist_hubs[self.end_hub].distance
                     if first_try is not None:
+                        first_try = first_try + i // total_bottleneck
                         list_tries.append(
                             [first_try, i - i // total_bottleneck])
 
