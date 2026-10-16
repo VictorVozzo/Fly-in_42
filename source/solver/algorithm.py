@@ -313,7 +313,49 @@ class Solver:
         for _ in range(turns_ahead):
             drone.turns.insert(0, self.start_hub.name)
 
+    def find_total_bottleneck(self) -> int:
+        zones_start_names: list[str] = self.graph[self.start_hub.name].copy()
+        zones_start: list[Hub] = []
+
+        def check_dead_end(zone_name: str) -> bool:
+            queue = [self.start_hub.name]
+            visited = [self.start_hub.name]
+            while queue:
+                current_hub = queue.pop(0)
+                if current_hub == self.end_hub.name:
+                    return False
+                if current_hub == self.start_hub.name:
+                    visited.append(zone_name)
+                    queue.append(zone_name)
+                else:
+                    for neighbour in self.graph[current_hub]:
+                        if neighbour not in visited:
+                            visited.append(neighbour)
+                            queue.append(neighbour)
+            return True
+
+        for hub_name in zones_start_names:
+            if check_dead_end(hub_name):
+                zones_start_names.remove(hub_name)
+        for zone in zones_start_names:
+            zones_start.append(self.find_hub(zone))
+
+        max_drones = 0
+        for zn in zones_start:
+            connection = self.find_connection(self.start_hub.name, zn.name)
+            if not connection:
+                raise ValueError(
+                    "Algorithm failed trying to find a valid path")
+            if connection.max_link_capacity < zn.max_drones:
+                max_drones += connection.max_link_capacity
+            else:
+                max_drones += zn.max_drones
+
+        return max_drones
+
     def find_path(self) -> None:
+
+        total_bottleneck = self.find_total_bottleneck()
 
         self.create_drones(self.nb_drones)
 
@@ -327,10 +369,12 @@ class Solver:
 
             if i > 2:
                 self.clean_dist_hubs()
-                if self.find_shortest_path(0, flag_first_drone):
+                if self.find_shortest_path((i // total_bottleneck),
+                                           flag_first_drone):
                     first_try = self.dist_hubs[self.end_hub].distance
                     if first_try is not None:
-                        list_tries.append([first_try, i])
+                        list_tries.append(
+                            [first_try, i - i // total_bottleneck])
 
             if i - 2 >= 0:
                 self.clean_dist_hubs()
