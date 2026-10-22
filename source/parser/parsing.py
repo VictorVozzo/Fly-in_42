@@ -480,10 +480,11 @@ class Parser:
         allowed_flags = ["--visual_output", "--benchmark"]
 
         if len(argv) != 2:
-            if len(argv) == 3 and argv[2] not in allowed_flags:
+            if ((len(argv) == 3 and argv[2] not in allowed_flags) or
+                    len(argv) != 3):
                 raise Exception("Usage: python3 fly_in.py <map.txt> "
                                 "[optional flag], allowed flags: "
-                                f"{allowed_flags[0]} and {allowed_flags[1]}]")
+                                f"{allowed_flags[0]} and {allowed_flags[1]}")
 
         config_list = self.read_config(argv[1])
         if config_list[1] != "":
