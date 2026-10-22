@@ -6,7 +6,7 @@
 #    By: vivozzo- <vivozzo-@student.42porto.com>    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 0026/09/18 16:01:03 by ivozzo-           #+#    #+#              #
-#    Updated: 2026/10/09 12:13:05 by vivozzo-         ###   ########.fr        #
+#    Updated: 2026/10/22 10:36:39 by vivozzo-         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -70,4 +70,4 @@ fclean: clean
 
 re: fclean all
 
-.PHONY: all install run debug clean fclean lint lint-strict visual benchmark
+.PHONY: all install run visual benchmark lint lint-strict debug clean fclean re
