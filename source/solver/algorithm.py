@@ -208,8 +208,7 @@ class Solver:
                 path_index += 1
 
     # return if it has a path or not
-    def find_shortest_path(self, turns_ahead: int,
-                           flag_first_drone: bool) -> bool:
+    def find_shortest_path(self, turns_ahead: int) -> bool:
         turns_visited: int | None = 0
         turns_visited_connect = 0
         turns_start_connect = 0
@@ -242,11 +241,9 @@ class Solver:
                             self.check_turns_if_priority(hub_connection) >
                             self.find_total_priority_zones(hub_connection))):
 
-                        if (flag_first_drone or
-                            len(hub_connection.occupancy_per_turn) - 1 <
+                        if (len(hub_connection.occupancy_per_turn) - 1 <
                             turns_start_connect + turns_ahead or
-                            (not flag_first_drone and
-                             hub_connection != self.end_hub and
+                            (hub_connection != self.end_hub and
                                 self.check_connection(hub_visited,
                                                       hub_connection,
                                                       turns_start_connect +
@@ -256,8 +253,7 @@ class Solver:
                                     hub_connection.max_drones))):
                             self.dist_hubs[hub_connection] = DistInfo(
                                 turns_start_connect, hub_visited)
-                        elif (not flag_first_drone and
-                              hub_connection == self.end_hub and
+                        elif (hub_connection == self.end_hub and
                               self.check_connection(hub_visited,
                                                     hub_connection,
                                                     turns_start_connect +
@@ -361,16 +357,11 @@ class Solver:
 
         for i in range(self.nb_drones):
 
-            flag_first_drone = False
-            if i == 0:
-                flag_first_drone = True
-
             list_tries: list[list[int]] = []
 
             if i > 2:
                 self.clean_dist_hubs()
-                if self.find_shortest_path((i // total_bottleneck),
-                                           flag_first_drone):
+                if self.find_shortest_path(i // total_bottleneck):
                     first_try = self.dist_hubs[self.end_hub].distance
                     if first_try is not None:
                         first_try = first_try + i // total_bottleneck
@@ -379,7 +370,7 @@ class Solver:
 
             if i - 2 >= 0:
                 self.clean_dist_hubs()
-                if self.find_shortest_path(i - 2, flag_first_drone):
+                if self.find_shortest_path(i - 2):
                     second_try = self.dist_hubs[self.end_hub].distance
                     if second_try is not None:
                         second_try = second_try + i - 2
@@ -387,14 +378,14 @@ class Solver:
 
             if i - 1 >= 0:
                 self.clean_dist_hubs()
-                if self.find_shortest_path(i - 1, flag_first_drone):
+                if self.find_shortest_path(i - 1):
                     third_try = self.dist_hubs[self.end_hub].distance
                     if third_try is not None:
                         third_try = third_try + i - 1
                         list_tries.append([third_try, 1])
 
             self.clean_dist_hubs()
-            if self.find_shortest_path(i, flag_first_drone):
+            if self.find_shortest_path(i):
                 fourth_try = self.dist_hubs[self.end_hub].distance
                 if fourth_try is not None:
                     fourth_try = fourth_try + i
@@ -410,7 +401,7 @@ class Solver:
                     best_try = list_tries[j]
 
             self.clean_dist_hubs()
-            self.find_shortest_path(i - best_try[1], flag_first_drone)
+            self.find_shortest_path(i - best_try[1])
 
             path = self.create_path()
 
