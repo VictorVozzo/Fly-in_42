@@ -209,9 +209,6 @@ class Solver:
 
     # return if it has a path or not
     def find_shortest_path(self, turns_ahead: int) -> bool:
-        turns_visited: int | None = 0
-        turns_visited_connect = 0
-        turns_start_connect = 0
         turn_cost_zone = {"normal": 1, "restricted": 2, "priority": 1}
         connections: list[str] = []
         visited_hubs: list[str] = []
@@ -227,39 +224,41 @@ class Solver:
                 raise ValueError("Algorithm failed trying to "
                                  "find a valid path")
             for hub_name in connections:
-                if hub_name not in visited_hubs:
-                    hub_connection = self.find_hub(hub_name)
-                    turns_visited_connect = turn_cost_zone[
-                        hub_connection.zone_type]
-                    turns_start_connect = turns_visited + turns_visited_connect
-                    connection_dist = self.dist_hubs[hub_connection].distance
+                if hub_name in visited_hubs:
+                    continue
 
-                    if (connection_dist is None or
-                        connection_dist > turns_start_connect
-                        or (connection_dist == turns_start_connect
-                            and self.find_total_priority_zones(hub_visited) +
-                            self.check_turns_if_priority(hub_connection) >
-                            self.find_total_priority_zones(hub_connection))):
+                hub_connection = self.find_hub(hub_name)
+                turns_visited_connect = turn_cost_zone[
+                    hub_connection.zone_type]
+                turns_start_connect = turns_visited + turns_visited_connect
+                connection_dist = self.dist_hubs[hub_connection].distance
 
-                        if (len(hub_connection.occupancy_per_turn) - 1 <
-                            turns_start_connect + turns_ahead or
-                            (hub_connection != self.end_hub and
-                                self.check_connection(hub_visited,
-                                                      hub_connection,
-                                                      turns_start_connect +
-                                                      turns_ahead) and
-                                (len(hub_connection.occupancy_per_turn[
-                                    turns_start_connect + turns_ahead]) + 1 <=
-                                    hub_connection.max_drones))):
-                            self.dist_hubs[hub_connection] = DistInfo(
-                                turns_start_connect, hub_visited)
-                        elif (hub_connection == self.end_hub and
-                              self.check_connection(hub_visited,
-                                                    hub_connection,
-                                                    turns_start_connect +
-                                                    turns_ahead)):
-                            self.dist_hubs[hub_connection] = DistInfo(
-                                turns_start_connect, hub_visited)
+                if (connection_dist is None or
+                    connection_dist > turns_start_connect
+                    or (connection_dist == turns_start_connect
+                        and self.find_total_priority_zones(hub_visited) +
+                        self.check_turns_if_priority(hub_connection) >
+                        self.find_total_priority_zones(hub_connection))):
+
+                    if (len(hub_connection.occupancy_per_turn) - 1 <
+                        turns_start_connect + turns_ahead or
+                        (hub_connection != self.end_hub and
+                            self.check_connection(hub_visited,
+                                                  hub_connection,
+                                                  turns_start_connect +
+                                                  turns_ahead) and
+                            (len(hub_connection.occupancy_per_turn[
+                                turns_start_connect + turns_ahead]) + 1 <=
+                                hub_connection.max_drones))):
+                        self.dist_hubs[hub_connection] = DistInfo(
+                            turns_start_connect, hub_visited)
+                    elif (hub_connection == self.end_hub and
+                            self.check_connection(hub_visited,
+                                                  hub_connection,
+                                                  turns_start_connect +
+                                                  turns_ahead)):
+                        self.dist_hubs[hub_connection] = DistInfo(
+                            turns_start_connect, hub_visited)
 
             smallest_turns_start_connect: int | None = None
             for hub in self.dist_hubs:
