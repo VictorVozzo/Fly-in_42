@@ -158,11 +158,11 @@ class Solver:
             path_index = 0
             for hub_name in path:
                 if self.find_hub(hub_name).zone_type != "restricted":
-                    if len(hub.occupancy_per_turn) <= turn_index:
+                    while len(hub.occupancy_per_turn) <= turn_index:
                         hub.occupancy_per_turn.append([])
 
                     for connec in self.list_connection:
-                        if len(connec.occupancy_per_turn) <= turn_index:
+                        while len(connec.occupancy_per_turn) <= turn_index:
                             connec.occupancy_per_turn.append([])
 
                     if hub_name == hub.name and hub != self.start_hub:
@@ -175,15 +175,15 @@ class Solver:
                             (connection_found, drone))
                     turn_index += 1
                 else:
-                    if len(hub.occupancy_per_turn) <= turn_index:
+                    while len(hub.occupancy_per_turn) <= turn_index:
                         hub.occupancy_per_turn.append([])
-                    if len(hub.occupancy_per_turn) <= turn_index + 1:
+                    while len(hub.occupancy_per_turn) <= turn_index + 1:
                         hub.occupancy_per_turn.append([])
 
                     for connection in self.list_connection:
-                        if len(connection.occupancy_per_turn) <= turn_index:
+                        while len(connection.occupancy_per_turn) <= turn_index:
                             connection.occupancy_per_turn.append([])
-                        if (len(connection.occupancy_per_turn) <=
+                        while (len(connection.occupancy_per_turn) <=
                                 turn_index + 1):
                             connection.occupancy_per_turn.append([])
                         if hub_name == hub.name and hub != self.start_hub:
@@ -329,10 +329,11 @@ class Solver:
                             queue.append(neighbour)
             return True
 
+        valid_zones_names: list[str] = []
         for hub_name in zones_start_names:
-            if check_dead_end(hub_name):
-                zones_start_names.remove(hub_name)
-        for zone in zones_start_names:
+            if not check_dead_end(hub_name):
+                valid_zones_names.append(hub_name)
+        for zone in valid_zones_names:
             zones_start.append(self.find_hub(zone))
 
         max_drones = 0
