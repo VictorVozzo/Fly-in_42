@@ -288,7 +288,8 @@ class VisualOutput:
                                         second_hub_coords[1]) // 2 +
                                        second_hub_coords[1] - 15))
 
-    def draw_map_text(self, is_step_mode: bool, hide_controls: bool,
+    def draw_map_text(self, is_step_mode: bool, actual_speed: int,
+                      hide_controls: bool,
                       index: int, total_turns: int,
                       font_turn_mode: pygame.font.Font,
                       screen: pygame.Surface, width: int, height: int,
@@ -319,72 +320,47 @@ class VisualOutput:
         text_mode = font_turn_mode.render(f"MODE: {mode}", False, "black")
         screen.blit(text_mode, (width_align, 100))
 
+        if not is_step_mode:
+            text_speed = font_turn_mode.render(
+                f"SPEED: x {2 ** (actual_speed - 1)}", False, "black")
+            screen.blit(text_speed, (width_align, 170))
+
         if not hide_controls:
-            height_controls = 250
+            height_controls = 430
             height_between_controls = height_between_align
             width_controls = width_align
             text_controls = font_controls.render("CONTROLS", False, "black")
             screen.blit(text_controls, (width_controls,
                         height_controls + height_between_controls/2))
-            text_controls_next_turn = font_controls.render(
-                "NEXT TURN: SPACE", False, "black")
-            screen.blit(text_controls_next_turn, (width_controls,
-                        height_controls + height_between_controls*2))
-            text_controls_reverse = font_controls.render(
-                "REVERSE: R", False, "black")
-            screen.blit(text_controls_reverse, (width_controls,
-                        height_controls + height_between_controls*3))
-            text_controls_reset = font_controls.render(
-                "RESET: SHIFT", False, "black")
-            screen.blit(text_controls_reset, (width_controls,
-                        height_controls + height_between_controls*4))
-            text_controls_mode = font_controls.render(
-                "MODE: M", False, "black")
-            screen.blit(text_controls_mode, (width_controls,
-                        height_controls + height_between_controls*5))
-            text_controls_hide = font_controls.render(
-                "HIDE CONTROLS: H", False, "black")
-            screen.blit(text_controls_hide, (width_controls,
-                        height_controls + height_between_controls*6))
-            text_controls_exit = font_controls.render(
-                "EXIT: ESC", False, "black")
-            screen.blit(text_controls_exit, (width_controls,
-                        height_controls + height_between_controls*7))
+
+            controls = ["NEXT TURN: SPACE", "REVERSE: R", "RESET: SHIFT",
+                        "MODE: M", "↑SPEED: V", "↓SPEED: D",
+                        "HIDE CONTROLS: H", "EXIT: ESC"]
+            for i in range(len(controls)):
+                text_controls = font_controls.render(controls[i],
+                                                     False, "black")
+                screen.blit(text_controls, (width_controls,
+                            height_controls + height_between_controls * (i+2)))
 
             legend_padding = 25
-            text_zone_legend = font_zone_legend.render(
-                "ZONE LEGEND", False, "black")
-            text_zone_legend_rect = text_zone_legend.get_rect(
+            legend = ["ZONE LEGEND", "■ : NORMAL ZONE", "▲ : RESTRICTED ZONE",
+                      "◆ : PRIORITY ZONE", "● : BLOCKED ZONE"]
+            legend_rect = []
+
+            text = font_zone_legend.render(
+                legend[0], False, "black")
+            text_rect = text.get_rect(
                 bottomleft=(20, height - 30))
-            screen.blit(text_zone_legend, text_zone_legend_rect)
-            text_normal_zone = font_zone_legend.render(
-                "■ : NORMAL ZONE", False, "black")
-            text_normal_zone_rect = text_normal_zone.get_rect(
-                bottomleft=(20, height - 30))
-            text_normal_zone_rect.left = (text_zone_legend_rect.right +
-                                          legend_padding)
-            screen.blit(text_normal_zone, text_normal_zone_rect)
-            text_restricted_zone = font_zone_legend.render(
-                "▲ : RESTRICTED ZONE", False, "black")
-            text_restricted_zone_rect = text_restricted_zone.get_rect(
-                bottomleft=(20, height - 30))
-            text_restricted_zone_rect.left = (text_normal_zone_rect.right +
-                                              legend_padding)
-            screen.blit(text_restricted_zone, text_restricted_zone_rect)
-            text_priority_zone = font_zone_legend.render(
-                "◆ : PRIORITY ZONE", False, "black")
-            text_priority_zone_rect = text_priority_zone.get_rect(
-                bottomleft=(20, height - 30))
-            text_priority_zone_rect.left = (text_restricted_zone_rect.right +
-                                            legend_padding)
-            screen.blit(text_priority_zone, text_priority_zone_rect)
-            text_blocked_zone = font_zone_legend.render(
-                "● : BLOCKED ZONE", False, "black")
-            text_blocked_zone_rect = text_blocked_zone.get_rect(
-                bottomleft=(20, height - 30))
-            text_blocked_zone_rect.left = (text_priority_zone_rect.right +
-                                           legend_padding)
-            screen.blit(text_blocked_zone, text_blocked_zone_rect)
+            legend_rect.append(text_rect)
+            screen.blit(text, text_rect)
+
+            for i in range(len(legend) - 1):
+                text = font_zone_legend.render(legend[i + 1], False, "black")
+                text_rect = text.get_rect(bottomleft=(20, height - 30))
+                legend_rect.append(text_rect)
+                text_rect.left = (legend_rect[i].right +
+                                  legend_padding)
+                screen.blit(text, text_rect)
 
     def drones_turns(self, screen: pygame.Surface, camera: Camera,
                      drones_coord: list[list[tuple[int, int]]], index: int,
@@ -451,7 +427,10 @@ class VisualOutput:
 
         camera = Camera()
 
-        time_between_turns = 1500  # time in ms
+        time_between_turns_initial = 1500.0  # initial time between turns in ms
+        max_speed = 4  # max speed power 2: 2 ** (max_speed - 1)
+        actual_speed = 1
+        time_between_turns = time_between_turns_initial
         time_now = pygame.time.get_ticks()
         time_next_turn = time_now + time_between_turns
         total_turns = TerminalOutput.find_total_turns(self.list_drones)
@@ -522,6 +501,15 @@ class VisualOutput:
                             hide_controls = True
                         else:
                             hide_controls = False
+                    if event.key == pygame.K_v:
+                        if (time_between_turns > time_between_turns_initial /
+                                (2 ** (max_speed - 1))):
+                            time_between_turns /= 2
+                            actual_speed += 1
+                    if event.key == pygame.K_d:
+                        if time_between_turns < time_between_turns_initial:
+                            time_between_turns *= 2
+                            actual_speed -= 1
 
                 camera.handle_event(event)
 
@@ -532,7 +520,7 @@ class VisualOutput:
             self.draw_zones(
                 screen, camera, zone_normal_surface, font_start_end_zone)
 
-            self.draw_map_text(is_step_mode, hide_controls,
+            self.draw_map_text(is_step_mode, actual_speed, hide_controls,
                                index, total_turns,
                                font_turn_mode, screen, width, height,
                                font_controls, font_map_file_title,
