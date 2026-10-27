@@ -140,6 +140,14 @@ class Solver:
                 for connec in hub_visited.occupancy_per_turn[turn]:
                     if connec[0] == connection:
                         count_total_connec += 1
+        else:
+            # restricted destination: the drone is on the connection during
+            # turn - 1, so also count drones arriving in hub_visited at that
+            # turn through this same connection (opposite direction)
+            if 0 <= turn - 1 < len(hub_visited.occupancy_per_turn):
+                for connec in hub_visited.occupancy_per_turn[turn - 1]:
+                    if connec[0] == connection:
+                        count_total_connec += 1
 
         if 0 <= turn - 1 < len(connection.occupancy_per_turn):
             count_total_connec += len(connection.occupancy_per_turn[turn - 1])
@@ -342,7 +350,8 @@ class Solver:
             if not connection:
                 raise ValueError(
                     "Algorithm failed trying to find a valid path")
-            if connection.max_link_capacity < zn.max_drones:
+            if (connection.max_link_capacity < zn.max_drones or
+                    zn == self.end_hub):
                 max_drones += connection.max_link_capacity
             else:
                 max_drones += zn.max_drones
