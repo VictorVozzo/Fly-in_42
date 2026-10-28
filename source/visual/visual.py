@@ -304,13 +304,13 @@ class VisualOutput:
                 "TURN: " + str(index), False, "black")
         else:
             text_turn = font_turn_mode.render(
-                "TURN: " + str(0), False, "black")
-        screen.blit(text_turn, (width_align, 30))
+                "TURN: 0", False, "black")
+        screen.blit(text_turn, (width_align, 15))
 
         text_map_file_title = font_map_file_title.render(
             f"MAP FILE NAME: {self.file_name}", False, "black")
         text_map_file_rect = text_map_file_title.get_rect(topleft=((30,
-                                                                   40)))
+                                                                   15)))
         screen.blit(text_map_file_title, text_map_file_rect)
 
         if is_step_mode:
@@ -318,12 +318,12 @@ class VisualOutput:
         else:
             mode = "AUTO"
         text_mode = font_turn_mode.render(f"MODE: {mode}", False, "black")
-        screen.blit(text_mode, (width_align, 100))
+        screen.blit(text_mode, (width_align, 85))
 
         if not is_step_mode:
             text_speed = font_turn_mode.render(
                 f"SPEED: x {2 ** (actual_speed - 1)}", False, "black")
-            screen.blit(text_speed, (width_align, 170))
+            screen.blit(text_speed, (width_align, 155))
 
         if not hide_controls:
             height_controls = 430
@@ -439,9 +439,8 @@ class VisualOutput:
         is_paused = True
         is_backwards = False
         is_step_mode = False
-        # limit to show the controls and legend
-        # (put ~20% of padding in weight and height limits)
-        limit_show_controls = (1500, 750)
+        # limit to show the controls and legend - limit is x = 1545, y = 980 
+        limit_show_controls = (1500, 900)
 
         if width < limit_show_controls[0] or height < limit_show_controls[1]:
             hide_controls = True
