@@ -292,7 +292,7 @@ class Solver:
     def clean_dist_hubs(self) -> None:
         self.dist_hubs[self.start_hub] = DistInfo(0, None)
         for hub in list(self.list_hub):
-            if hub.zone_type != "blocked":
+            if hub.zone_type != "blocked" and hub.name in self.graph:
                 self.dist_hubs[hub] = DistInfo(None, None)
         self.dist_hubs[self.end_hub] = DistInfo(None, None)
 
