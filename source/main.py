@@ -21,22 +21,26 @@ def main() -> None:
     try:
         parsing = Parser()
         final_data = parsing.parsing(argv)
-        solver = Solver(final_data[0], final_data[1], final_data[2],
-                        final_data[3], final_data[4], parsing.graph)
+        nb_drones, list_hub, list_connection, start_hub, end_hub = (
+            final_data[0], final_data[1], final_data[2], final_data[3],
+            final_data[4])
+
+        solver = Solver(nb_drones, list_hub, list_connection,
+                        start_hub, end_hub, parsing.graph)
         solver.find_path()
 
         if len(argv) == 3:
             if argv[2] == "--visual_output":
                 TerminalOutput(solver.list_drones,
-                               final_data[3], argv[1]).print_terminal()
-                VisualOutput(solver.list_drones, final_data[1], final_data[2],
-                             final_data[3], final_data[4], argv[1]).visual()
+                               start_hub, argv[1]).print_terminal()
+                VisualOutput(solver.list_drones, list_hub, list_connection,
+                             start_hub, end_hub, argv[1]).visual()
             elif argv[2] == "--benchmark":
                 TerminalOutput(solver.list_drones,
-                               final_data[3], argv[1]).performance_benchmark()
+                               start_hub, argv[1]).performance_benchmark()
         else:
             TerminalOutput(solver.list_drones,
-                           final_data[3], argv[1]).print_terminal()
+                           start_hub, argv[1]).print_terminal()
     except Exception as e:
         print(f"Caught the following error(s): \n{e}")
 
