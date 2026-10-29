@@ -6,7 +6,7 @@
 #   By: vivozzo- <vivozzo-@student.42porto.com>     +#+  +:+       +#+        #
 #                                                 +#+#+#+#+#+   +#+           #
 #   Created: 2026/09/09 13:54:46 by vivozzo-           #+#    #+#             #
-#   Updated: 2026/09/24 14:11:24 by vivozzo-          ###   ########.fr       #
+#   Updated: 2026/10/29 13:53:03 by vivozzo-          ###   ########.fr       #
 #                                                                             #
 # *************************************************************************** #
 
@@ -153,7 +153,6 @@ class Parser:
                 if neighbour not in visited:
                     visited.append(neighbour)
                     queue.append(neighbour)
-
 
         self.errors += (
             f"There is no connection between start_hub '{start_hub}' "

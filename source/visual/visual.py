@@ -1,12 +1,12 @@
 # *************************************************************************** #
 #                                                                             #
 #                                                         :::      ::::::::   #
-#   terminal.py                                         :+:      :+:    :+:   #
+#   visual.py                                           :+:      :+:    :+:   #
 #                                                     +:+ +:+         +:+     #
 #   By: vivozzo- <vivozzo-@student.42porto.com>     +#+  +:+       +#+        #
 #                                                 +#+#+#+#+#+   +#+           #
 #   Created: 2026/09/17 17:03:18 by vivozzo-           #+#    #+#             #
-#   Updated: 2026/09/22 14:58:10 by vivozzo-          ###   ########.fr       #
+#   Updated: 2026/10/29 13:52:43 by vivozzo-          ###   ########.fr       #
 #                                                                             #
 # *************************************************************************** #
 
@@ -439,7 +439,7 @@ class VisualOutput:
         is_paused = True
         is_backwards = False
         is_step_mode = False
-        # limit to show the controls and legend - limit is x = 1545, y = 980 
+        # limit to show the controls and legend - limit is x = 1545, y = 980
         limit_show_controls = (1500, 900)
 
         if width < limit_show_controls[0] or height < limit_show_controls[1]:
@@ -519,14 +519,14 @@ class VisualOutput:
             self.draw_zones(
                 screen, camera, zone_normal_surface, font_start_end_zone)
 
+            self.drones_turns(screen, camera, drones_coord,
+                              index, drone_img, font_id_drone)
+
             self.draw_map_text(is_step_mode, actual_speed, hide_controls,
                                index, total_turns,
                                font_turn_mode, screen, width, height,
                                font_controls, font_map_file_title,
                                font_zone_legend)
-
-            self.drones_turns(screen, camera, drones_coord,
-                              index, drone_img, font_id_drone)
 
             if (not is_paused and not is_step_mode and
                 time_now >= time_next_turn and
