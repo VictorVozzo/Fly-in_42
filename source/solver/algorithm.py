@@ -6,7 +6,7 @@
 #   By: vivozzo- <vivozzo-@student.42porto.com>     +#+  +:+       +#+        #
 #                                                 +#+#+#+#+#+   +#+           #
 #   Created: 2026/09/21 10:58:09 by vivozzo-           #+#    #+#             #
-#   Updated: 2026/09/25 15:39:31 by vivozzo-          ###   ########.fr       #
+#   Updated: 2026/10/29 17:13:49 by vivozzo-          ###   ########.fr       #
 #                                                                             #
 # *************************************************************************** #
 
@@ -377,7 +377,7 @@ class Solver:
                         list_tries.append(
                             [first_try, i - i // total_bottleneck])
 
-            if i - 2 >= 0:
+            if (i <= 2 or i // total_bottleneck != i - 2) and (i - 2 >= 0):
                 self.clean_dist_hubs()
                 if self.find_shortest_path(i - 2):
                     second_try = self.dist_hubs[self.end_hub].distance
@@ -385,7 +385,7 @@ class Solver:
                         second_try = second_try + i - 2
                         list_tries.append([second_try, 2])
 
-            if i - 1 >= 0:
+            if (i <= 2 or i // total_bottleneck != i - 1) and (i - 1 >= 0):
                 self.clean_dist_hubs()
                 if self.find_shortest_path(i - 1):
                     third_try = self.dist_hubs[self.end_hub].distance
