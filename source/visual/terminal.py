@@ -6,7 +6,7 @@
 #   By: vivozzo- <vivozzo-@student.42porto.com>     +#+  +:+       +#+        #
 #                                                 +#+#+#+#+#+   +#+           #
 #   Created: 2026/09/17 17:03:18 by vivozzo-           #+#    #+#             #
-#   Updated: 2026/09/22 14:58:10 by vivozzo-          ###   ########.fr       #
+#   Updated: 2026/10/29 11:20:26 by vivozzo-          ###   ########.fr       #
 #                                                                             #
 # *************************************************************************** #
 
@@ -45,7 +45,7 @@ class TerminalOutput:
         total_turns = self.find_total_turns(list_drones)
         output = ""
 
-        output += f"\nMap file: {map_file.split("/")[-1]}\n"
+        output += f"\nMap file: {map_file.split('/')[-1]}\n"
 
         for i in range(total_turns + 1):
             if i != 0:

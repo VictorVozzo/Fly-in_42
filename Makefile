@@ -1,12 +1,12 @@
 # **************************************************************************** #
 #                                                                              #
-#                                                         :::      ::::::::    #
-#    Makefile                                           :+:      :+:    :+:    #
-#                                                     +:+ +:+         +:+      #
-#    By: vivozzo- <vivozzo-@student.42porto.com>    +#+  +:+       +#+         #
-#                                                 +#+#+#+#+#+   +#+            #
-#    Created: 0026/09/18 16:01:03 by ivozzo-           #+#    #+#              #
-#    Updated: 2026/10/26 16:46:51 by vivozzo-         ###   ########.fr        #
+#                                                          :::      ::::::::   #
+#   Makefile                                             :+:      :+:    :+:   #
+#                                                      +:+ +:+         +:+     #
+#   By: vivozzo- <vivozzo-@student.42porto.com>      +#+  +:+       +#+        #
+#                                                  +#+#+#+#+#+   +#+           #
+#   Created: 0026/09/18 16:01:03 by ivozzo-             #+#    #+#             #
+#   Updated: 2026/10/29 11:14:17 by vivozzo-           ###   ########.fr       #
 #                                                                              #
 # **************************************************************************** #
 
@@ -32,12 +32,12 @@ ARGS ?= maps/hard/03_ultimate_challenge.txt
 
 all: install
 
-# $(VENV_BIN)/activate:
-# 	python3 -m venv $(VENV_DIR)
-
-#ERASE THIS TWO LINES BEFORE DELIVER THE PROJECT:
 $(VENV_BIN)/activate:
-	~/.local/python3.12/bin/python3.12 -m venv $(VENV_DIR)    
+	python3 -m venv $(VENV_DIR)
+
+# #ERASE THIS TWO LINES BEFORE DELIVER THE PROJECT:
+# $(VENV_BIN)/activate:
+# 	~/.local/python3.12/bin/python3.12 -m venv $(VENV_DIR)    
 
 install: $(VENV_BIN)/activate
 	$(PIP) install --upgrade pip >/dev/null 2>&1
