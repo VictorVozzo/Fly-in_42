@@ -54,6 +54,47 @@ class Camera:
         )
 
 
+class Tooltip:
+    """Small info box drawn next to the mouse cursor."""
+
+    PADDING: int = 8
+    OFFSET: int = 16
+    BG_COLOR: tuple[int, int, int, int] = (10, 20, 40, 220)
+    BORDER_COLOR: tuple[int, int, int] = (255, 255, 255)
+    TEXT_COLOR: tuple[int, int, int] = (255, 255, 255)
+
+    def __init__(self, font: pygame.font.Font) -> None:
+        """Store the font (create it once, not every frame)."""
+        self.font = font
+
+    def draw(self, screen: pygame.Surface, lines: list[str],
+             mouse_pos: tuple[int, int]) -> None:
+        """Draw the box with one text line per entry in `lines`."""
+        if not lines:
+            return
+        texts = [self.font.render(t, True, self.TEXT_COLOR) for t in lines]
+        width = max(t.get_width() for t in texts) + 2 * self.PADDING
+        height = sum(t.get_height() for t in texts) + 2 * self.PADDING
+
+        x = mouse_pos[0] + self.OFFSET
+        y = mouse_pos[1] + self.OFFSET
+        screen_w, screen_h = screen.get_size()
+        if x + width > screen_w:            # no space on the right: flip
+            x = mouse_pos[0] - self.OFFSET - width
+        if y + height > screen_h:           # no space below: flip
+            y = mouse_pos[1] - self.OFFSET - height
+        x, y = max(0, x), max(0, y)
+
+        box = pygame.Surface((width, height), pygame.SRCALPHA)
+        box.fill(self.BG_COLOR)
+        pygame.draw.rect(box, self.BORDER_COLOR, box.get_rect(), 1)
+        offset_y = self.PADDING
+        for text in texts:
+            box.blit(text, (self.PADDING, offset_y))
+            offset_y += text.get_height()
+        screen.blit(box, (x, y))
+
+
 class VisualOutput:
     def __init__(self, list_drones: list[Drone], list_hub: list[Hub],
                  list_connection: list[Connection], start_hub: Hub,
@@ -171,16 +212,53 @@ class VisualOutput:
                     (int(screen_x), int(screen_y))
                 )
 
+    def hub_screen_rect(self, camera: Camera, hub: Hub) -> pygame.Rect:
+        """Return the 50x50 on-screen square of a zone."""
+        x, y = camera.world_to_screen(
+            hub.first_coord * self.coord_adjust_mult
+            + self.adjust_zones_coord[0],
+            hub.second_coord * self.coord_adjust_mult
+            + self.adjust_zones_coord[1])
+        return pygame.Rect(x, y, 50, 50)
+
+    def hub_under_mouse(self, camera: Camera,
+                        mouse_pos: tuple[int, int]) -> Hub | None:
+        """Return the zone under the cursor, or None."""
+        for hub in [self.start_hub, self.end_hub, *self.list_hub]:
+            if self.hub_screen_rect(camera, hub).collidepoint(mouse_pos):
+                return hub
+        return None
+
+    def drones_in_hub(self, hub: Hub, turn: int) -> list[int]:
+        """Return the ids of the drones in a zone at the given turn.
+
+        For the end zone, return the drones already delivered.
+        """
+        if turn > self.total_turns:
+            return []
+        if hub.name == self.end_hub.name:
+            return [d.id for d in self.list_drones
+                    if hub.name in d.turns[:turn + 1]]
+        return [d.id for d in self.list_drones
+                if len(d.turns) > turn and d.turns[turn] == hub.name]
+
+    def hub_tooltip_lines(self, hub: Hub, turn: int) -> list[str]:
+        """Build the tooltip text: name, type, drones and occupancy."""
+        symbols: dict[str, str] = {"normal": "■", "restricted": "▲",
+                                   "priority": "◆", "blocked": "●"}
+        ids = self.drones_in_hub(hub, turn)
+        lines = [hub.name,
+                 f"{symbols.get(hub.zone_type, '?')} {hub.zone_type}"]
+        if hub.name in (self.start_hub.name, self.end_hub.name):
+            lines.append(str(len(ids)))     # sem limite: só o número
+        else:
+            lines.append(" ".join(f"D{i}" for i in ids) or "-")
+            lines.append(f"{len(ids)}/{hub.max_drones}")
+        return lines
+
     def draw_zones(self, screen: pygame.Surface, camera: Camera,
                    zone_normal_surface: pygame.Surface,
                    font_start_end_zone: pygame.font.Font, turn: int) -> None:
-
-        def hub_drones_per_turn(hub: Hub, turn: int) -> list[str]:
-            list_drones = []
-            print(hub.occupancy_per_turn[turn])
-            for connec, drone in hub.occupancy_per_turn[turn]:
-                list_drones.append(f"D{drone.id}")
-            return list_drones
 
         def total_drones_hub(turn: int, hub: Hub) -> int:
             total = 0
@@ -371,7 +449,7 @@ class VisualOutput:
         if not hide_controls:
             height_controls = 460
             height_between_controls = height_between_align
-            width_controls = width_align
+            width_controls = width_align + 55
             text_controls = font_controls.render("CONTROLS", False, "black")
             screen.blit(text_controls, (width_controls,
                         height_controls + height_between_controls/2))
@@ -457,6 +535,8 @@ class VisualOutput:
             "source/visual/files/DejaVuSans.ttf", 23)
         font_start_end_zone = pygame.font.Font(
             "source/visual/files/DejaVuSans.ttf", 27)
+        tooltip = Tooltip(pygame.font.Font(
+            "source/visual/files/DejaVuSans.ttf", 24))
 
         zone_normal_surface = pygame.Surface((50, 50))
         background_surface = pygame.image.load(
@@ -570,6 +650,16 @@ class VisualOutput:
                                font_turn_mode, screen, width, height,
                                font_controls, font_map_file_title,
                                font_zone_legend)
+
+            mouse_pos = pygame.mouse.get_pos()
+            mouse_hub = (None if camera.dragging
+                         else self.hub_under_mouse(camera, mouse_pos))
+            if mouse_hub is not None:
+                pygame.draw.rect(
+                    screen, "white",
+                    self.hub_screen_rect(camera, mouse_hub).inflate(10, 10), 3)
+                tooltip.draw(screen, self.hub_tooltip_lines(mouse_hub, index),
+                             mouse_pos)
 
             if (not is_paused and not is_step_mode and
                 time_now >= time_next_turn and
