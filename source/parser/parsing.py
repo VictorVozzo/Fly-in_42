@@ -137,6 +137,13 @@ class Parser:
                     if name in neighbours:
                         neighbours.remove(name)
 
+        if start_hub not in self.graph:
+            self.errors += (
+                f"There is no connection between start_hub '{start_hub}' "
+                f"and end_hub '{end_hub}'\n"
+            )
+            return
+
         # Breadth-First Search (BFS)
         queue = [start_hub]
         visited = [start_hub]
@@ -273,7 +280,7 @@ class Parser:
                            "'color' and 'max_drones'\n")
             elif (metadata_divided[0] == "zone" and
                   metadata_divided[1] not in zone_allowed):
-                errors += (f"Zone {metadata_divided[0]} at line {line} "
+                errors += (f"Zone '{metadata_divided[1]}' at line {line} "
                            "is not allowed, must be: 'normal', 'blocked', "
                            "'restricted' or 'priority'\n")
             elif (metadata_divided[0] == "max_drones" and
@@ -490,7 +497,7 @@ class Parser:
         if len(argv) != 2:
             if ((len(argv) == 3 and argv[2] not in allowed_flags) or
                     len(argv) != 3):
-                raise Exception("Usage: python3 fly_in.py <map.txt> "
+                raise Exception("Usage: python3 main.py <map.txt> "
                                 "[optional flag], allowed flags: "
                                 f"{allowed_flags[0]} and {allowed_flags[1]}")
 
