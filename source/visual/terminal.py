@@ -246,3 +246,5 @@ class TerminalOutput:
 
         with open("benchmark_output.txt", "a") as f:
             f.write(f"\n{benchmark_text}\n")
+
+        print("Performance benchmark report saved as 'benchmark_output.txt'\n")
