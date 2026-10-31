@@ -143,16 +143,20 @@ class Parser:
 
         while queue:
             current_hub = queue.pop(0)
-            if current_hub == end_hub:
-                graph_copy = self.graph.copy()
-                for hub in graph_copy:
-                    if hub not in visited:
-                        del self.graph[hub]
-                return
             for neighbour in self.graph[current_hub]:
                 if neighbour not in visited:
                     visited.append(neighbour)
                     queue.append(neighbour)
+
+        if end_hub in visited:
+            # keep only the zones reachable from the start and drop the
+            # removed names from the neighbour lists too
+            for hub in list(self.graph):
+                if hub not in visited:
+                    del self.graph[hub]
+            for neighbours in self.graph.values():
+                neighbours[:] = [n for n in neighbours if n in self.graph]
+            return
 
         self.errors += (
             f"There is no connection between start_hub '{start_hub}' "
