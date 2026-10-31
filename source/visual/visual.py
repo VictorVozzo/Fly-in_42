@@ -63,6 +63,7 @@ class VisualOutput:
         self.list_connection = list_connection
         self.start_hub = start_hub
         self.end_hub = end_hub
+        self.total_turns = TerminalOutput.find_total_turns(self.list_drones)
         self.file_name = file_name.split("/")[-1]
         self.adjust_zones_coord = (0, 0)
         self.coord_adjust_mult = 0
@@ -300,11 +301,20 @@ class VisualOutput:
         width_align = width - 370
         height_between_align = 50
         if index <= total_turns:
-            text_turn = font_turn_mode.render(
-                "TURN: " + str(index), False, "black")
+            if self.total_turns < 100:
+                text_turn = font_turn_mode.render(
+                    "TURN: " + str(index) + f"/{self.total_turns}",
+                    False, "black")
+            else:
+                text_turn = font_turn_mode.render(
+                    "TURN: " + str(index), False, "black")
         else:
-            text_turn = font_turn_mode.render(
-                "TURN: 0", False, "black")
+            if self.total_turns < 100:
+                text_turn = font_turn_mode.render(
+                    "TURN: 0" + f"/{self.total_turns}", False, "black")
+            else:
+                text_turn = font_turn_mode.render(
+                    "TURN: 0", False, "black")
         screen.blit(text_turn, (width_align, 15))
 
         text_map_file_title = font_map_file_title.render(
@@ -367,8 +377,7 @@ class VisualOutput:
                      drone_img: pygame.Surface,
                      font_id_drone: pygame.font.Font) -> None:
 
-        total_turns = TerminalOutput.find_total_turns(self.list_drones)
-        if index < total_turns:
+        if index < self.total_turns:
             i = 1
             for drone in drones_coord:
                 if index < len(drone):
