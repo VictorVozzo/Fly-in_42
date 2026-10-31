@@ -59,6 +59,7 @@ class VisualOutput:
                  list_connection: list[Connection], start_hub: Hub,
                  end_hub: Hub, file_name: str) -> None:
         self.list_drones = list_drones
+        self.total_drones = len(list_drones)
         self.list_hub = list_hub
         self.list_connection = list_connection
         self.start_hub = start_hub
@@ -172,7 +173,22 @@ class VisualOutput:
 
     def draw_zones(self, screen: pygame.Surface, camera: Camera,
                    zone_normal_surface: pygame.Surface,
-                   font_start_end_zone: pygame.font.Font) -> None:
+                   font_start_end_zone: pygame.font.Font, turn: int) -> None:
+
+        def hub_drones_per_turn(hub: Hub, turn: int) -> list[str]:
+            list_drones = []
+            print(hub.occupancy_per_turn[turn])
+            for connec, drone in hub.occupancy_per_turn[turn]:
+                list_drones.append(f"D{drone.id}")
+            return list_drones
+
+        def total_drones_hub(turn: int, hub: Hub) -> int:
+            total = 0
+            for drone in self.list_drones:
+                if len(drone.turns) > turn:
+                    if drone.turns[turn] == hub.name:
+                        total += 1
+            return total
 
         def draw_zones_objects(coords_x: int, coords_y: int, hub: Hub) -> None:
             coords_x, coords_y = camera.world_to_screen(
@@ -190,19 +206,6 @@ class VisualOutput:
                 zone_normal_surface.fill(color)
                 screen.blit(
                     zone_normal_surface, (coords_x, coords_y))
-                zone_rect = pygame.Rect(coords_x, coords_y, 50, 50)
-                if hub.name == self.start_hub.name:
-                    text_start = font_start_end_zone.render(
-                        "START", True, "black")
-                    text_start_rect = text_start.get_rect(
-                        midbottom=(zone_rect.centerx, zone_rect.bottom + 34))
-                    screen.blit(text_start, text_start_rect)
-                elif hub.name == self.end_hub.name:
-                    text_end = font_start_end_zone.render(
-                        "END", True, "black")
-                    text_end_rect = text_end.get_rect(
-                        midbottom=(zone_rect.centerx, zone_rect.bottom + 34))
-                    screen.blit(text_end, text_end_rect)
 
             elif hub.zone_type == "priority":
                 coords = [(coords_x + 25, coords_y),
@@ -218,6 +221,36 @@ class VisualOutput:
             elif hub.zone_type == "blocked":
                 pygame.draw.circle(
                     screen, color, (coords_x + 25, coords_y + 25), 25)
+
+            zone_rect = pygame.Rect(coords_x, coords_y, 50, 50)
+            if hub.name == self.start_hub.name:
+                text_start = font_start_end_zone.render(
+                    "START", True, "black")
+                text_start_rect = text_start.get_rect(
+                    midbottom=(zone_rect.centerx, zone_rect.bottom + 40))
+                screen.blit(text_start, text_start_rect)
+                text_total_start = font_start_end_zone.render(
+                    f" {total_drones_hub(turn, hub)}/{self.total_drones}",
+                    True, "black")
+                text_total_start_rect = text_total_start.get_rect(
+                    midbottom=(zone_rect.centerx - 5, zone_rect.top - 23))
+                screen.blit(text_total_start, text_total_start_rect)
+            elif hub.name == self.end_hub.name:
+                text_end = font_start_end_zone.render(
+                    "END", True, "black")
+                text_end_rect = text_end.get_rect(
+                    midbottom=(zone_rect.centerx, zone_rect.bottom + 40))
+                screen.blit(text_end, text_end_rect)
+                total_drones = 0
+                for i in range(turn):
+                    if turn > self.total_turns:
+                        break
+                    total_drones += total_drones_hub(i+1, hub)
+                text_total_end = font_start_end_zone.render(
+                    f" {total_drones}/{self.total_drones}", True, "black")
+                text_total_end_rect = text_total_end.get_rect(
+                    midbottom=(zone_rect.centerx - 5, zone_rect.top - 23))
+                screen.blit(text_total_end, text_total_end_rect)
 
         draw_zones_objects(self.start_hub.first_coord *
                            self.coord_adjust_mult +
@@ -336,7 +369,7 @@ class VisualOutput:
             screen.blit(text_speed, (width_align, 155))
 
         if not hide_controls:
-            height_controls = 430
+            height_controls = 460
             height_between_controls = height_between_align
             width_controls = width_align
             text_controls = font_controls.render("CONTROLS", False, "black")
@@ -442,14 +475,13 @@ class VisualOutput:
         time_between_turns = time_between_turns_initial
         time_now = pygame.time.get_ticks()
         time_next_turn = time_now + time_between_turns
-        total_turns = TerminalOutput.find_total_turns(self.list_drones)
-        index = total_turns + 1
+        index = self.total_turns + 1
 
         is_paused = True
         is_backwards = False
         is_step_mode = False
-        # limit to show the controls and legend - limit is x = 1545, y = 980
-        limit_show_controls = (1500, 900)
+        # limit to show the controls and legend - limit is x = 1545, y = 950
+        limit_show_controls = (1500, 870)
 
         if width < limit_show_controls[0] or height < limit_show_controls[1]:
             hide_controls = True
@@ -475,16 +507,16 @@ class VisualOutput:
                             is_paused = True
                         if is_backwards:
                             is_backwards = False
-                        if is_step_mode and index < total_turns:
+                        if is_step_mode and index < self.total_turns:
                             index += 1
-                        if index == total_turns + 1:
+                        if index == self.total_turns + 1:
                             index = 0
                     if event.key == pygame.K_LSHIFT:
                         if not is_paused:
                             is_paused = True
                         if is_backwards:
                             is_backwards = False
-                        index = total_turns + 1
+                        index = self.total_turns + 1
                     if event.key == pygame.K_r:
                         if is_paused or not is_backwards:
                             is_paused = False
@@ -492,11 +524,12 @@ class VisualOutput:
                             is_paused = True
                         if not is_backwards:
                             is_backwards = True
-                        if is_step_mode and index > 0 and index <= total_turns:
+                        if (is_step_mode and index > 0 and
+                                index <= self.total_turns):
                             index -= 1
                             if index == 0:
-                                index = total_turns + 1
-                        if not is_step_mode and index == total_turns:
+                                index = self.total_turns + 1
+                        if not is_step_mode and index == self.total_turns:
                             index -= 1
                             time_next_turn = time_now + time_between_turns
                     if event.key == pygame.K_m:
@@ -526,27 +559,28 @@ class VisualOutput:
             self.draw_connections(screen, camera, connec_coord, font_max_link)
 
             self.draw_zones(
-                screen, camera, zone_normal_surface, font_start_end_zone)
+                screen, camera, zone_normal_surface, font_start_end_zone,
+                index)
 
             self.drones_turns(screen, camera, drones_coord,
                               index, drone_img, font_id_drone)
 
             self.draw_map_text(is_step_mode, actual_speed, hide_controls,
-                               index, total_turns,
+                               index, self.total_turns,
                                font_turn_mode, screen, width, height,
                                font_controls, font_map_file_title,
                                font_zone_legend)
 
             if (not is_paused and not is_step_mode and
                 time_now >= time_next_turn and
-                    index >= 0 and index < total_turns):
+                    index >= 0 and index < self.total_turns):
                 if not is_backwards:
                     index += 1
                 else:
                     if index != 0:
                         index -= 1
                     else:
-                        index = total_turns + 1
+                        index = self.total_turns + 1
                 time_next_turn = time_now + time_between_turns
 
             # draw all elements and update everything
