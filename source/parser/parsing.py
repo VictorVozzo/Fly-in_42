@@ -98,8 +98,6 @@ class Parser:
 
         return ""
 
-    # check connection only if the check hub and check_nb_drones was ok
-
     def check_connection(self) -> None:
         """Validate the connections and build the graph.
 
