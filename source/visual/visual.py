@@ -675,7 +675,7 @@ class VisualOutput:
             screen.blit(text_controls, (width_controls,
                         height_controls + height_between_controls/2))
 
-            controls = ["NEXT TURN: SPACE", "REVERSE: R", "RESET: SHIFT",
+            controls = ["NEXT TURN: SPACE", "REVERSE: R", "RESET: LEFT SHIFT",
                         "MODE: M", "↑SPEED: V", "↓SPEED: D",
                         "HIDE CONTROLS: H", "EXIT: ESC"]
             for i in range(len(controls)):
