@@ -380,7 +380,7 @@ Every map meets its target, and **The Impossible Dream beats the reference recor
 - `typing` module: https://docs.python.org/3/library/typing.html
 - PEP 257 (docstring conventions): https://peps.python.org/pep-0257/
 - `pygame` documentation: https://www.pygame.org/docs/
-- 'Dijkstras Shortest Path Algorithm Explained | With Example | Graph Theory' : https://www.youtube.com/watch?v=bZkzH5x0SKU
+- Dijkstra's algorithm (Wikipedia): https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm
 
 ### How AI was used
 
