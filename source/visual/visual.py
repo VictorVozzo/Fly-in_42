@@ -184,33 +184,18 @@ class VisualOutput:
         return connec_coord
 
     def draw_background(self, screen: pygame.Surface,
-                        camera: Camera, background: pygame.Surface) -> None:
-        tile_width = background.get_width()
-        tile_height = background.get_height()
-
-        start_x = int(camera.x // tile_width) * tile_width
-        start_y = int(camera.y // tile_height) * tile_height
-
-        end_x = camera.x + screen.get_width()
-        end_y = camera.y + screen.get_height()
-
-        for world_x in range(
-            start_x,
-            int(end_x) + tile_width,
-            tile_width
-        ):
-            for world_y in range(
-                start_y,
-                int(end_y) + tile_height,
-                tile_height
-            ):
-                screen_x = world_x - camera.x
-                screen_y = world_y - camera.y
-
-                screen.blit(
-                    background,
-                    (int(screen_x), int(screen_y))
-                )
+                        camera: Camera) -> None:
+        """Fill the screen and draw a grid aligned with map coordinates."""
+        screen.fill((200, 205, 212))
+        step = self.coord_adjust_mult
+        width, height = screen.get_size()
+        # +25: the grid passes through the centre of each zone (50x50)
+        start_x = (self.adjust_zones_coord[0] + 25 - camera.x) % step
+        start_y = (self.adjust_zones_coord[1] + 25 - camera.y) % step
+        for x in range(int(start_x), width, step):
+            pygame.draw.line(screen, (180, 186, 194), (x, 0), (x, height))
+        for y in range(int(start_y), height, step):
+            pygame.draw.line(screen, (180, 186, 194), (0, y), (width, y))
 
     def hub_screen_rect(self, camera: Camera, hub: Hub) -> pygame.Rect:
         """Return the 50x50 on-screen square of a zone."""
@@ -539,8 +524,6 @@ class VisualOutput:
             "source/visual/files/DejaVuSans.ttf", 24))
 
         zone_normal_surface = pygame.Surface((50, 50))
-        background_surface = pygame.image.load(
-            "source/visual/files/sky-clouds-8-bit.png").convert()
         drone_img = pygame.image.load(
             "source/visual/files/drone.png").convert_alpha()
         drone_img = pygame.transform.smoothscale(drone_img, (72, 72))
@@ -634,7 +617,7 @@ class VisualOutput:
 
                 camera.handle_event(event)
 
-            self.draw_background(screen, camera, background_surface)
+            self.draw_background(screen, camera)
 
             self.draw_connections(screen, camera, connec_coord, font_max_link)
 
@@ -656,7 +639,7 @@ class VisualOutput:
                          else self.hub_under_mouse(camera, mouse_pos))
             if mouse_hub is not None:
                 pygame.draw.rect(
-                    screen, "white",
+                    screen, (30, 30, 30),
                     self.hub_screen_rect(camera, mouse_hub).inflate(10, 10), 3)
                 tooltip.draw(screen, self.hub_tooltip_lines(mouse_hub, index),
                              mouse_pos)
