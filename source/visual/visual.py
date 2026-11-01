@@ -417,7 +417,7 @@ class VisualOutput:
         lines = [hub.name,
                  f"{symbols.get(hub.zone_type, '?')} {hub.zone_type}"]
         if hub.name in (self.start_hub.name, self.end_hub.name):
-            lines.append(str(len(ids)))     # sem limite: só o número
+            lines.append(str(len(ids)))
         else:
             lines.append(" ".join(f"D{i}" for i in ids) or "-")
             lines.append(f"{len(ids)}/{hub.max_drones}")
