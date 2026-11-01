@@ -14,11 +14,22 @@ import pygame
 from sys import exit
 from building import Hub, Connection, Drone
 from visual import TerminalOutput
-import math
+from math import hypot
 
 
 class Camera:
+    """Camera of the map, moved by dragging with the mouse.
+
+    Attributes:
+        x: Horizontal offset of the camera.
+        y: Vertical offset of the camera.
+        dragging: True while the left mouse button is held down.
+        last_mouse_pos: Last mouse position seen while dragging.
+    """
+
     def __init__(self) -> None:
+        """Create a camera at the origin and not dragging."""
+
         self.x = 0
         self.y = 0
 
@@ -26,6 +37,14 @@ class Camera:
         self.last_mouse_pos: tuple[int, int] = (0, 0)
 
     def handle_event(self, event: pygame.event.Event) -> None:
+        """Move the camera according to a mouse event.
+
+        Pressing the left button starts the drag, moving the mouse while
+        dragging scrolls the map and releasing the button ends the drag.
+
+        Args:
+            event: Pygame event to process.
+        """
 
         if event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:
@@ -48,6 +67,16 @@ class Camera:
                 self.last_mouse_pos = event.pos
 
     def world_to_screen(self, x: int, y: int) -> tuple[int, int]:
+        """Convert map coordinates to screen coordinates.
+
+        Args:
+            x: Horizontal position in the map.
+            y: Vertical position in the map.
+
+        Returns:
+            The position on the screen, taking the camera offset into account.
+        """
+
         return (
             x - self.x,
             y - self.y
@@ -55,7 +84,19 @@ class Camera:
 
 
 class Tooltip:
-    """Small info box drawn next to the mouse cursor."""
+    """Small info box drawn next to the mouse cursor.
+
+    The box is placed at an offset from the cursor and is flipped to the
+    other side when it would go off the screen.
+
+    Attributes:
+        PADDING: Space in pixels between the border and the text.
+        OFFSET: Distance in pixels between the cursor and the box.
+        BG_COLOR: Background color as RGBA (semi-transparent).
+        BORDER_COLOR: Color of the border, as RGB.
+        TEXT_COLOR: Color of the text, as RGB.
+        font: Font used to render the lines of text.
+    """
 
     PADDING: int = 8
     OFFSET: int = 16
@@ -64,12 +105,24 @@ class Tooltip:
     TEXT_COLOR: tuple[int, int, int] = (255, 255, 255)
 
     def __init__(self, font: pygame.font.Font) -> None:
-        """Store the font (create it once, not every frame)."""
+        """Store the font (create it once, not every frame).
+
+        Args:
+            font: Font used to render the lines of text.
+        """
         self.font = font
 
     def draw(self, screen: pygame.Surface, lines: list[str],
              mouse_pos: tuple[int, int]) -> None:
-        """Draw the box with one text line per entry in `lines`."""
+        """Draw the box with one text line per entry in `lines`.
+
+        Nothing is drawn if ``lines`` is empty.
+
+        Args:
+            screen: Surface where the box is drawn.
+            lines: Text lines to show, one per entry.
+            mouse_pos: Current position of the mouse cursor.
+        """
         if not lines:
             return
         texts = [self.font.render(t, True, self.TEXT_COLOR) for t in lines]
@@ -96,9 +149,40 @@ class Tooltip:
 
 
 class VisualOutput:
+    """Graphical (pygame) representation of the simulation.
+
+    Shows the zones, the connections and the drones turn by turn, with
+    controls to play, pause, reverse and change the speed.
+
+    Attributes:
+        list_drones: Drones with their timelines already computed.
+        total_drones: Number of drones.
+        list_hub: Regular hubs (without the start and end hubs).
+        list_connection: All the connections of the map.
+        start_hub: Starting zone.
+        end_hub: Target zone.
+        total_turns: Total number of simulation turns.
+        file_name: Name of the map file.
+        adjust_zones_coord: Pixel offset applied to all the zones.
+        coord_adjust_mult: Pixels per map coordinate unit.
+        total_drones_hub: For each zone, the ids of the drones in it at
+            each turn (list index). Filled by ``create_total_drones_hub``.
+    """
+
     def __init__(self, list_drones: list[Drone], list_hub: list[Hub],
                  list_connection: list[Connection], start_hub: Hub,
                  end_hub: Hub, file_name: str) -> None:
+        """Create the visual output.
+
+        Args:
+            list_drones: Drones with their timelines already computed.
+            list_hub: Regular hubs (without the start and end hubs).
+            list_connection: All the connections of the map.
+            start_hub: Starting zone.
+            end_hub: Target zone.
+            file_name: Path of the map file; only its name is kept.
+        """
+
         self.list_drones = list_drones
         self.total_drones = len(list_drones)
         self.list_hub = list_hub
@@ -109,8 +193,21 @@ class VisualOutput:
         self.file_name = file_name.split("/")[-1]
         self.adjust_zones_coord = (0, 0)
         self.coord_adjust_mult = 0
+        self.total_drones_hub: dict[Hub, list[list[int]]] = {}
 
     def find_hub(self, hub_name: str) -> Hub:
+        """Find a hub by its name.
+
+        Args:
+            hub_name: Name of the hub (including start and end hubs).
+
+        Returns:
+            The matching hub.
+
+        Raises:
+            ValueError: If there is no hub with that name.
+        """
+
         for hb in self.list_hub:
             if hb.name == hub_name:
                 return hb
@@ -122,6 +219,15 @@ class VisualOutput:
         raise ValueError(f"Hub '{hub_name}' not found")
 
     def create_drones_coord(self) -> list[list[tuple[int, int]]]:
+        """Convert the timeline of every drone into pixel positions.
+
+        For a zone, the position is the scaled zone coordinate. For a drone
+        in flight on a connection, it is the midpoint between the two zones.
+
+        Returns:
+            For each drone, the ``(x, y)`` position at each turn.
+        """
+
         i = 0
         drones_coord: list[list[tuple[int, int]]] = []
         for drone in self.list_drones:
@@ -162,6 +268,13 @@ class VisualOutput:
 
     def create_connec_coord(self) -> list[tuple[tuple[int, int],
                                                 tuple[int, int], int]]:
+        """Convert the connections into pixel coordinates.
+
+        Returns:
+            For each connection, a tuple ``(first_zone_position,
+            second_zone_position, max_link_capacity)``.
+        """
+
         connec_coord: list[tuple[tuple[int, int], tuple[int, int], int]] = []
 
         for connec in self.list_connection:
@@ -185,7 +298,16 @@ class VisualOutput:
 
     def draw_background(self, screen: pygame.Surface,
                         camera: Camera) -> None:
-        """Fill the screen and draw a grid aligned with map coordinates."""
+        """Fill the screen and draw a grid aligned with map coordinates.
+
+        The grid has one line per coordinate unit (``coord_adjust_mult``
+        pixels apart) and moves together with the camera, so it always
+        stays aligned with the zones.
+
+        Args:
+            screen: Surface where the background is drawn.
+            camera: Camera that gives the current offset.
+        """
         screen.fill((200, 205, 212))
         step = self.coord_adjust_mult
         width, height = screen.get_size()
@@ -198,7 +320,16 @@ class VisualOutput:
             pygame.draw.line(screen, (180, 186, 194), (0, y), (width, y))
 
     def hub_screen_rect(self, camera: Camera, hub: Hub) -> pygame.Rect:
-        """Return the 50x50 on-screen square of a zone."""
+        """Return the 50x50 on-screen square of a zone.
+
+        Args:
+            camera: Camera that gives the current offset.
+            hub: Zone to locate.
+
+        Returns:
+            The rectangle the zone occupies on the screen, taking the
+            camera offset into account.
+        """
         x, y = camera.world_to_screen(
             hub.first_coord * self.coord_adjust_mult
             + self.adjust_zones_coord[0],
@@ -208,30 +339,81 @@ class VisualOutput:
 
     def hub_under_mouse(self, camera: Camera,
                         mouse_pos: tuple[int, int]) -> Hub | None:
-        """Return the zone under the cursor, or None."""
+        """Return the zone under the cursor, or None.
+
+        Checks the start zone, the end zone and then the regular zones,
+        and returns the first one whose on-screen square contains the
+        cursor.
+
+        Args:
+            camera: Camera that gives the current offset.
+            mouse_pos: Current position of the mouse cursor.
+
+        Returns:
+            The zone under the cursor, or ``None`` if there is none.
+        """
         for hub in [self.start_hub, self.end_hub, *self.list_hub]:
             if self.hub_screen_rect(camera, hub).collidepoint(mouse_pos):
                 return hub
         return None
 
-    def drones_in_hub(self, hub: Hub, turn: int) -> list[int]:
-        """Return the ids of the drones in a zone at the given turn.
+    def create_total_drones_hub(self) -> None:
+        """Precompute which drones are in each zone at every turn.
 
-        For the end zone, return the drones already delivered.
+        Fills ``total_drones_hub`` with, for each zone, a list indexed by
+        turn (from 0 to ``total_turns``) with the ids of the drones in it.
+        For the end zone, the ids are those of the drones already delivered.
+        It must be called once, before the viewer loop, so the tooltip and
+        the START/END counters do not recalculate it every frame.
         """
-        if turn > self.total_turns:
-            return []
-        if hub.name == self.end_hub.name:
+
+        def drones_in_hub(hub: Hub, turn: int) -> list[int]:
+            """Return the ids of the drones in a zone at the given turn.
+
+            For the end zone, return the drones already delivered.
+
+            Args:
+                hub: Zone to check.
+                turn: Turn to check.
+
+            Returns:
+                The drone ids, or an empty list if ``turn`` is after the
+                last turn.
+            """
+            if turn > self.total_turns:
+                return []
+            if hub.name == self.end_hub.name:
+                return [d.id for d in self.list_drones
+                        if hub.name in d.turns[:turn + 1]]
             return [d.id for d in self.list_drones
-                    if hub.name in d.turns[:turn + 1]]
-        return [d.id for d in self.list_drones
-                if len(d.turns) > turn and d.turns[turn] == hub.name]
+                    if len(d.turns) > turn and d.turns[turn] == hub.name]
+
+        for hub in [self.start_hub, self.end_hub, *self.list_hub]:
+            self.total_drones_hub[hub] = []
+
+        for i in range(self.total_turns + 1):
+            for hb in [self.start_hub, self.end_hub, *self.list_hub]:
+                self.total_drones_hub[hb].append(drones_in_hub(hb, i))
 
     def hub_tooltip_lines(self, hub: Hub, turn: int) -> list[str]:
-        """Build the tooltip text: name, type, drones and occupancy."""
+        """Build the tooltip text: name, type, drones and occupancy.
+
+        Uses the data precomputed by ``create_total_drones_hub``. A turn
+        out of range (for example the reset state) shows no drones.
+
+        Args:
+            hub: Zone under the mouse.
+            turn: Turn to represent.
+
+        Returns:
+            The lines of the tooltip. Start and end zones only show the
+            number of drones; the other zones show the drone ids and the
+            occupancy as ``current/max_drones``.
+        """
         symbols: dict[str, str] = {"normal": "■", "restricted": "▲",
                                    "priority": "◆", "blocked": "●"}
-        ids = self.drones_in_hub(hub, turn)
+        turns = self.total_drones_hub[hub]
+        ids = turns[turn] if turn < len(turns) else []
         lines = [hub.name,
                  f"{symbols.get(hub.zone_type, '?')} {hub.zone_type}"]
         if hub.name in (self.start_hub.name, self.end_hub.name):
@@ -244,16 +426,32 @@ class VisualOutput:
     def draw_zones(self, screen: pygame.Surface, camera: Camera,
                    zone_normal_surface: pygame.Surface,
                    font_start_end_zone: pygame.font.Font, turn: int) -> None:
+        """Draw the zones and the START/END counters.
 
-        def total_drones_hub(turn: int, hub: Hub) -> int:
-            total = 0
-            for drone in self.list_drones:
-                if len(drone.turns) > turn:
-                    if drone.turns[turn] == hub.name:
-                        total += 1
-            return total
+        Each zone is drawn according to its type (square for normal,
+        triangle for restricted, diamond for priority and circle for
+        blocked) using its color, or gray if the color is not valid. The
+        start and end zones also show how many drones are in each at
+        the given turn (for the end zone, the delivered drones), using
+        the data of ``total_drones_hub``; out of range turns show 0.
+
+        Args:
+            screen: Surface where everything is drawn.
+            camera: Camera that gives the current offset.
+            zone_normal_surface: Reusable 50x50 surface for normal zones.
+            font_start_end_zone: Font of the START and END labels.
+            turn: Turn to represent.
+        """
 
         def draw_zones_objects(coords_x: int, coords_y: int, hub: Hub) -> None:
+            """Draw one zone and, if needed, its START or END label.
+
+            Args:
+                coords_x: Horizontal map position (recomputed from ``hub``).
+                coords_y: Vertical map position (recomputed from ``hub``).
+                hub: Zone to draw.
+            """
+
             coords_x, coords_y = camera.world_to_screen(
                 hub.first_coord *
                 self.coord_adjust_mult +
@@ -292,8 +490,10 @@ class VisualOutput:
                 text_start_rect = text_start.get_rect(
                     midbottom=(zone_rect.centerx, zone_rect.bottom + 40))
                 screen.blit(text_start, text_start_rect)
+                total_drones_hub = ((len(self.total_drones_hub[hub][turn]) if
+                                     turn < self.total_turns + 1 else 0))
                 text_total_start = font_start_end_zone.render(
-                    f" {total_drones_hub(turn, hub)}/{self.total_drones}",
+                    f" {total_drones_hub}/{self.total_drones}",
                     True, "black")
                 text_total_start_rect = text_total_start.get_rect(
                     midbottom=(zone_rect.centerx - 5, zone_rect.top - 23))
@@ -304,13 +504,10 @@ class VisualOutput:
                 text_end_rect = text_end.get_rect(
                     midbottom=(zone_rect.centerx, zone_rect.bottom + 40))
                 screen.blit(text_end, text_end_rect)
-                total_drones = 0
-                for i in range(turn):
-                    if turn > self.total_turns:
-                        break
-                    total_drones += total_drones_hub(i+1, hub)
+                total_drones_hub = ((len(self.total_drones_hub[hub][turn]) if
+                                     turn < self.total_turns + 1 else 0))
                 text_total_end = font_start_end_zone.render(
-                    f" {total_drones}/{self.total_drones}", True, "black")
+                    f" {total_drones_hub}/{self.total_drones}", True, "black")
                 text_total_end_rect = text_total_end.get_rect(
                     midbottom=(zone_rect.centerx - 5, zone_rect.top - 23))
                 screen.blit(text_total_end, text_total_end_rect)
@@ -340,10 +537,20 @@ class VisualOutput:
     def draw_thick_line(self, screen: pygame.Surface, color: str,
                         p1: tuple[int, int],
                         p2: tuple[int, int], width: int) -> None:
+        """Draw a line with a given thickness.
+
+        Args:
+            screen: Surface where the line is drawn.
+            color: Color of the line.
+            p1: Starting point.
+            p2: Ending point.
+            width: Thickness of the line in pixels.
+        """
+
         x1, y1 = p1
         x2, y2 = p2
         dx, dy = x2 - x1, y2 - y1
-        length = math.hypot(dx, dy)
+        length = hypot(dx, dy)
         if length == 0:
             return
 
@@ -362,6 +569,14 @@ class VisualOutput:
                          connec_coord: list[tuple[tuple[int, int],
                                                   tuple[int, int], int]],
                          font_max_link: pygame.font.Font) -> None:
+        """Draw the connections and their maximum capacity.
+
+        Args:
+            screen: Surface where everything is drawn.
+            camera: Camera that gives the current offset.
+            connec_coord: Connections as returned by ``create_connec_coord``.
+            font_max_link: Font of the capacity numbers.
+        """
 
         for connec in connec_coord:
             first_hub_coords = camera.world_to_screen(
@@ -393,6 +608,27 @@ class VisualOutput:
                       font_controls: pygame.font.Font,
                       font_map_file_title: pygame.font.Font,
                       font_zone_legend: pygame.font.Font) -> None:
+        """Draw the texts of the interface.
+
+        Shows the turn, map name, mode (step or auto) and speed, and also
+        the list of controls and the zone legend unless they are hidden.
+
+        Args:
+            is_step_mode: True in step mode, False in automatic mode.
+            actual_speed: Current speed level (the speed is
+                ``2 ** (actual_speed - 1)``).
+            hide_controls: True to hide the controls and the legend.
+            index: Current turn; a value above ``total_turns`` is shown as
+                turn 0 (reset state).
+            total_turns: Total number of turns.
+            font_turn_mode: Font of the turn, mode and speed.
+            screen: Surface where the texts are drawn.
+            width: Width of the screen.
+            height: Height of the screen.
+            font_controls: Font of the list of controls.
+            font_map_file_title: Font of the map name.
+            font_zone_legend: Font of the zone legend.
+        """
 
         width_align = width - 370
         height_between_align = 50
@@ -472,6 +708,19 @@ class VisualOutput:
                      drones_coord: list[list[tuple[int, int]]], index: int,
                      drone_img: pygame.Surface,
                      font_id_drone: pygame.font.Font) -> None:
+        """Draw the drones, with their ids, at a given turn.
+
+        The id is not drawn while the drone is still in the start zone.
+        Nothing is drawn once ``index`` reaches the total number of turns.
+
+        Args:
+            screen: Surface where the drones are drawn.
+            camera: Camera that gives the current offset.
+            drones_coord: Positions as returned by ``create_drones_coord``.
+            index: Turn to represent.
+            drone_img: Image used to draw each drone.
+            font_id_drone: Font of the drone ids.
+        """
 
         if index < self.total_turns:
             i = 1
@@ -498,9 +747,24 @@ class VisualOutput:
                 i += 1
 
     def visual(self) -> None:
+        """Open the window and run the simulation viewer.
+
+        Loads the fonts and images, precomputes the drones of each zone and
+        loops until the window is closed.
+        Controls: SPACE plays/pauses (or goes to the next turn in step
+        mode), R reverses, SHIFT resets, M switches between auto and step
+        mode, V and D change the speed, H hides the controls and ESC exits.
+        Dragging with the mouse moves the map and hovering a zone shows a
+        tooltip with its drones. The program ends when the window is
+        closed.
+        """
+
         pygame.init()
-        self.adjust_zones_coord = (75, 350)
+
         self.coord_adjust_mult = 125
+        self.adjust_zones_coord = (
+            75 - self.start_hub.first_coord * self.coord_adjust_mult,
+            350 - self.start_hub.second_coord * self.coord_adjust_mult)
 
         screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
         width, height = screen.get_size()
@@ -529,6 +793,7 @@ class VisualOutput:
         drone_img = pygame.transform.smoothscale(drone_img, (72, 72))
         connec_coord = self.create_connec_coord()
         drones_coord = self.create_drones_coord()
+        self.create_total_drones_hub()
 
         camera = Camera()
 

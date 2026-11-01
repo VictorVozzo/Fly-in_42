@@ -18,6 +18,15 @@ from sys import argv
 
 
 def main() -> None:
+    """Run the Fly-in simulation.
+
+    Parses the map file given in ``argv[1]``, computes the path of every
+    drone and shows the result. With no flag, the turns are printed in
+    the terminal. ``--visual_output`` also opens the graphical window and
+    ``--benchmark`` runs the performance benchmark on the provided maps.
+    Any error is caught and printed as a message instead of crashing.
+    """
+
     try:
         parsing = Parser()
         final_data = parsing.parsing(argv)

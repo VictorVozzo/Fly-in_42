@@ -15,8 +15,31 @@ from building import Hub, Connection
 
 
 class Parser:
+    """Read, validate and convert a Fly-in map file.
+
+    The parser works in stages (format, hubs, number of drones and
+    connections). Problems are accumulated in ``errors`` so that all the
+    messages of a stage are reported together.
+
+    Attributes:
+        config: Non-empty, non-comment lines split as ``[key, value]``.
+        hub_names: Names of the valid hubs found so far.
+        errors: Accumulated error messages (empty when the map is valid).
+        line_index: Original file line number of each ``config`` entry.
+        hub_names_zones: ``[name, zone_type]`` pairs, used to remove the
+            blocked hubs from the graph.
+        nb_drones_data: Number of drones, as read from the file.
+        hub_data: For each hub name, the list ``[kind, x, y, zone, color,
+            max_drones]`` (all values as strings).
+        connection_data: For each hub name, the ``[other_hub, capacity]``
+            pairs of the connections declared with it as first name.
+        graph: Adjacency list of the usable zones (blocked and
+            unreachable zones are removed).
+    """
 
     def __init__(self) -> None:
+        """Create a parser with empty state."""
+
         self.config: list[list[str]] = []
         self.hub_names: list[str] = []
         self.errors = ""
@@ -29,6 +52,21 @@ class Parser:
 
     def check_metadata_connection(self, metadata: str, line: int,
                                   first_name: str) -> str:
+        """Validate the metadata block of a connection.
+
+        The only accepted form is ``[max_link_capacity=<positive integer>]``.
+        If no error was found so far, the capacity is stored in the last
+        connection registered for ``first_name``.
+
+        Args:
+            metadata: Raw metadata text, including the brackets.
+            line: Line number in the map file (used in error messages).
+            first_name: Name of the first zone of the connection.
+
+        Returns:
+            An error message, or an empty string if the metadata is valid.
+        """
+
         metadata_connection = []
 
         if metadata[0] != "[" or metadata[len(metadata) - 1] != "]":
@@ -63,6 +101,16 @@ class Parser:
     # check connection only if the check hub and check_nb_drones was ok
 
     def check_connection(self) -> None:
+        """Validate the connections and build the graph.
+
+        Checks the syntax of each ``connection:`` line, that both zones
+        exist, that the connection is not repeated (``a-b`` and ``b-a`` are
+        the same) and its metadata. Then removes blocked zones and runs a
+        breadth-first search from the start hub to ensure the end hub is
+        reachable. Zones that cannot be reached from the start are dropped
+        from ``graph``. Problems are appended to ``errors``.
+        """
+
         connections = []
         start_hub = ""
         end_hub = ""
@@ -171,6 +219,11 @@ class Parser:
         )
 
     def check_nb_drones(self) -> None:
+        """Validate the ``nb_drones`` entry.
+
+        Stores the value in ``nb_drones_data`` if it is a positive integer,
+        otherwise appends an error to ``errors``.
+        """
 
         for data in self.config:
             if data[0] == "nb_drones":
@@ -182,6 +235,27 @@ class Parser:
 
     def check_metadata_hub(self, metadata: str, line: int, key: str,
                            flag_start_end_hub: bool, name: str) -> str:
+        """Validate the metadata block of a hub and store its values.
+
+        Accepts ``zone``, ``color`` and ``max_drones`` (each at most once, in
+        any order). ``zone`` must be a valid type and ``max_drones`` a
+        positive integer. On start and end hubs ``max_drones`` is ignored.
+        The values are appended to ``hub_data[name]`` as zone, color and
+        max_drones, using the defaults ``normal``, ``none`` and ``1`` for
+        the missing ones.
+
+        Args:
+            metadata: Raw metadata text, including the brackets.
+            line: Line number in the map file (used in error messages).
+            key: Line keyword (``start_hub``, ``end_hub`` or ``hub``).
+            flag_start_end_hub: True for start and end hubs, where
+                ``max_drones`` is ignored.
+            name: Name of the hub the metadata belongs to.
+
+        Returns:
+            The error messages found, or an empty string if it is valid.
+        """
+
         metadata_list = []
         metadata_allowed = ["zone", "color", "max_drones"]
         zone_allowed = ["normal", "blocked", "restricted", "priority"]
@@ -293,6 +367,15 @@ class Parser:
         return errors
 
     def check_hub(self) -> None:
+        """Validate the hub lines and register the zones.
+
+        For each ``start_hub``, ``end_hub`` and ``hub`` entry, checks the
+        syntax, that the name is unique and has no dash, that the
+        coordinates are integers and not used by another zone, and
+        delegates the metadata to ``check_metadata_hub``. Fills ``hub_names``
+        and ``hub_data``; problems are appended to ``errors``.
+        """
+
         value_list = []
         hub_list = ["start_hub", "end_hub", "hub"]
         coords = []
@@ -379,18 +462,23 @@ class Parser:
 
             i += 1
 
-    # check if there is an invalid input,
-    # first check if there is a line without just 1 ":"
-    # after that, check if the first line is nb_drones,
-    # if there is only one start_hub and end_hub
-    # check if there is atleast one connection
-
     def check_invalid_format_input(self, config_list: list[str]) -> None:
+        """Check the general structure of the map file.
+
+        Verifies that every line has exactly one ``:`` with a non-empty key
+        and value, that the first line is ``nb_drones`` (and only that
+        line), that all keys are known, that there is exactly one
+        ``start_hub`` and one ``end_hub`` and at least one connection. Fills
+        ``config`` and appends any problem to ``errors``.
+
+        Args:
+            config_list: Lines of the file, without blank lines and comments.
+        """
+
         config_list_split = []
         allowed_keys = ["nb_drones", "start_hub",
                         "end_hub", "hub", "connection"]
 
-        # check invalid inputs, with the exactly line
         for i in range(len(config_list)):
             if config_list[i].count(":") != 1:
                 self.errors += f"Invalid syntax at line {self.line_index[i]}\n"
@@ -461,13 +549,21 @@ class Parser:
             self.errors += ("There is no connection in the "
                             "configuration file\n")
 
-    # just read the config file and save all the lines
-    # (return a tuple, the first element
-    # is the config list and the second is a error message -
-    # if there isnt an error, it will
-    # be empty
-
     def read_config(self, map_path: str) -> tuple[list[str], str]:
+        """Read the map file, ignoring blank lines and comments.
+
+        The original line number of each kept line is saved in
+        ``line_index``.
+
+        Args:
+            map_path: Path of the map file.
+
+        Returns:
+            A tuple ``(lines, error)``. ``error`` is an empty string on
+            success; otherwise ``lines`` is empty and ``error`` describes the
+            problem (empty file or file that could not be opened).
+        """
+
         config_list = []
 
         i = 0
@@ -492,6 +588,21 @@ class Parser:
 
     def parsing(self, argv: list[str]) -> tuple[int, list[Hub],
                                                 list[Connection], Hub, Hub]:
+        """Parse and validate a map file given the command line.
+
+        Args:
+            argv: Command line arguments (``main.py``, the map path and
+                optionally ``--visual_output`` or ``--benchmark``).
+
+        Returns:
+            A tuple ``(nb_drones, list_hub, list_connection, start_hub,
+            end_hub)``. ``list_hub`` does not include the start and end hubs.
+
+        Raises:
+            Exception: If the usage is wrong or if the map has any error
+                (the message lists the lines and causes).
+        """
+
         allowed_flags = ["--visual_output", "--benchmark"]
 
         if len(argv) != 2:

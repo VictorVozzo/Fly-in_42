@@ -15,38 +15,90 @@ from typing import NamedTuple
 
 
 class DistInfo(NamedTuple):
+    """Best known way to reach a hub in the shortest path search.
+
+    Attributes:
+        distance: Turns needed to reach the hub (``None`` if unknown).
+        previous: Hub visited just before it (``None`` for the start).
+    """
+
     distance: int | None
     previous: Hub | None
 
 
 class Solver:
+    """Compute the path and the turn-by-turn moves of every drone.
+
+    Drones are scheduled one at a time. For each one, a Dijkstra-like
+    search finds the fastest path taking into account the turns already
+    reserved by the previous drones (zone and connection capacities,
+    waiting turns, restricted and priority zones). The resulting timeline
+    is then stored in the occupancy tables, so the next drones avoid
+    conflicts and are spread over different routes when needed.
+
+    Attributes:
+        nb_drones: Number of drones to route.
+        list_hub: Regular hubs (without the start and end hubs).
+        list_connection: All the connections of the map.
+        start_hub: Starting zone.
+        end_hub: Target zone.
+        dist_hubs: Best known ``DistInfo`` of each hub during the search.
+        list_drones: Drones created by ``create_drones``.
+        graph: Adjacency list of the usable zones.
+    """
 
     def __init__(self, nb_drones: int, list_hub: list[Hub],
                  list_connection: list[Connection],
                  start_hub: Hub, end_hub: Hub, graph: dict[str, list[str]]
                  ) -> None:
+        """Create the solver.
+
+        Args:
+            nb_drones: Number of drones to route.
+            list_hub: Regular hubs (without the start and end hubs).
+            list_connection: All the connections of the map.
+            start_hub: Starting zone.
+            end_hub: Target zone.
+            graph: Adjacency list of the usable zones.
+        """
+
         self.nb_drones = nb_drones
         self.list_hub = list_hub
         self.list_connection = list_connection
         self.start_hub = start_hub
         self.end_hub = end_hub
-        # dict with the Hub as the keys and a list with int as the dist(turns)
-        # and a string as the previous hub(node) name
         self.dist_hubs: dict[Hub, DistInfo] = {}
         self.list_drones: list[Drone] = []
         self.graph: dict[str, list[str]] = graph
 
     def create_drones(self, nb_drones: int) -> None:
+        """Create the drones and add them to ``list_drones``.
+
+        Args:
+            nb_drones: Number of drones to create (ids start at 1).
+        """
+
         for i in range(nb_drones):
             drone = Drone(i+1)
             self.list_drones.append(drone)
 
     def create_path(self) -> list[str]:
+        """Rebuild the path found by the search.
+
+        Goes from the end hub back to the start hub following the
+        ``previous`` links of ``dist_hubs``.
+
+        Returns:
+            Zone names from the start hub to the end hub.
+
+        Raises:
+            ValueError: If a hub has no previous hub, meaning there is no
+                valid path.
+        """
+
         current_hub = self.end_hub
         path = []
 
-        # to find the path in the dijkstra algorithm,
-        # we need to start in the end and go in the start direction
         while current_hub != self.start_hub:
             path.append(current_hub.name)
             previous_hub = self.dist_hubs[current_hub].previous
@@ -62,6 +114,16 @@ class Solver:
 
     def find_connection(self, first_name: str,
                         second_name: str) -> Connection | None:
+        """Find the connection between two zones, in any direction.
+
+        Args:
+            first_name: Name of one zone.
+            second_name: Name of the other zone.
+
+        Returns:
+            The connection, or ``None`` if the zones are not connected.
+        """
+
         for connection in self.list_connection:
             if ((connection.first_name == first_name and
                  connection.second_name == second_name) or
@@ -71,6 +133,18 @@ class Solver:
         return None
 
     def find_hub(self, hub_name: str) -> Hub:
+        """Find a hub by its name.
+
+        Args:
+            hub_name: Name of the hub (including start and end hubs).
+
+        Returns:
+            The matching hub.
+
+        Raises:
+            ValueError: If there is no hub with that name.
+        """
+
         for hb in self.list_hub:
             if hb.name == hub_name:
                 return hb
@@ -82,8 +156,23 @@ class Solver:
         raise ValueError(f"Hub '{hub_name}' not found")
 
     def find_total_priority_zones(self, hub: Hub) -> int:
-        count = 0
+        """Count the priority zones on the best path to a hub.
 
+        Follows the ``previous`` links of ``dist_hubs`` back to the start.
+        Used to break ties between paths with the same number of turns,
+        preferring the one that crosses more priority zones.
+
+        Args:
+            hub: Hub at the end of the path.
+
+        Returns:
+            Number of priority zones found, including ``hub`` itself.
+
+        Raises:
+            ValueError: If the chain of previous hubs is broken.
+        """
+
+        count = 0
         current_hub = hub
 
         if hub.zone_type == "priority":
@@ -94,26 +183,47 @@ class Solver:
             if previous_hub is None:
                 raise ValueError(
                     "Algorithm failed trying to find a valid path")
-            for connection in self.list_connection:
-                if ((connection.first_name == current_hub.name and
-                     connection.second_name == previous_hub.name) or
-                        (connection.second_name == current_hub.name and
-                         connection.first_name == previous_hub.name)):
-                    if previous_hub.zone_type == "priority":
-                        count += 1
-                    break
+            if previous_hub.zone_type == "priority":
+                count += 1
             current_hub = previous_hub
 
         return count
 
     def check_turns_if_priority(self, hub: Hub) -> int:
+        """Tell whether a hub counts as a priority zone.
+
+        Args:
+            hub: Hub to check.
+
+        Returns:
+            1 if the hub is a priority zone, otherwise 0.
+        """
+
         if hub.zone_type == "priority":
             return 1
         return 0
 
-    # check if the connection exceed the maximum capacity
     def check_connection(self, hub_visited: Hub,
                          hub_connection: Hub, turn: int) -> bool:
+        """Check if a connection can take one more drone.
+
+        Counts the drones already using the link (in flight and
+        arriving through it) around the given turn and compares with
+        ``max_link_capacity``.
+
+        Args:
+            hub_visited: Hub where the move starts.
+            hub_connection: Destination hub of the move.
+            turn: Turn in which the drone arrives at ``hub_connection``.
+
+        Returns:
+            True if the link has room for one more drone, False otherwise.
+            A negative ``turn`` is always accepted.
+
+        Raises:
+            ValueError: If the two hubs are not connected.
+        """
+
         connection = self.find_connection(
             hub_visited.name, hub_connection.name)
         if connection is None:
@@ -125,7 +235,7 @@ class Solver:
         count_total_connec = 0
 
         # if it is restricted, we will only check the connection occupancy,
-        #  because if it not restricted,
+        # because if it is not restricted,
         # the update will save the connec itself and not the connec occupancy
         # (the drone doesnt stay 1 turn in the connection)
         # restricted will save the connection in the hub occupancy and will
@@ -158,6 +268,21 @@ class Solver:
         return True
 
     def update_hubs_connec_occupancy(self, drone: Drone) -> None:
+        """Reserve the turns of a drone in the occupancy tables.
+
+        For every turn of ``drone.turns``: if the drone is in flight on a
+        connection, it is added to ``connection.occupancy_per_turn``;
+        otherwise it is added to ``hub.occupancy_per_turn`` together with the
+        connection used to arrive (an empty one when the drone just waited).
+        The start hub is ignored.
+
+        Args:
+            drone: Drone with its ``turns`` already computed.
+
+        Raises:
+            ValueError: If a connection used by the drone does not exist.
+        """
+
         # empty connection used when a drone is only waiting in a hub
         empty_connec = Connection("", "", 1)
         for index, name in enumerate(drone.turns):
@@ -190,17 +315,47 @@ class Solver:
                 hub.occupancy_per_turn.append([])
             hub.occupancy_per_turn[index].append((connec, drone))
 
-    # return if it has a path or not
-
     def find_shortest_path(self) -> bool:
+        """Find the fastest path from the start to the end hub.
+
+        Dijkstra variant where the distance is measured in turns. When
+        relaxing a neighbour, the cost of the zone type (1 for normal and
+        priority, 2 for restricted) is added and the move is delayed while the
+        connection or the destination hub is full, according to the turns
+        reserved by the previous drones. Ties are broken in favor of paths
+        with more priority zones. Results are stored in ``dist_hubs``.
+
+        Returns:
+            True if the search finished, False if it got stuck because no
+            reachable hub was left to visit.
+
+        Raises:
+            ValueError: If the graph and the connections are inconsistent.
+        """
+
         turn_cost_zone = {"normal": 1, "restricted": 2, "priority": 1}
         connections: list[str] = []
         visited_hubs: list[str] = []
 
         def find_total_wait(turn: int, hub_connection: Hub,
                             hub_visited: Hub) -> int:
-            # need to check connection and hub vacancy,
-            # if it is occupied, it will wait
+            """Find the first turn in which a move is possible.
+
+            Starting at ``turn``, keeps adding turns while the connection
+            has no free capacity and then while the destination hub is
+            full (the end hub has no limit).
+
+            Args:
+                turn: Earliest turn in which the drone would arrive.
+                hub_connection: Destination hub.
+                hub_visited: Hub where the move starts.
+
+            Returns:
+                The turn in which the drone can arrive at ``hub_connection``.
+
+            Raises:
+                ValueError: If the two hubs are not connected.
+            """
 
             connection = self.find_connection(
                 hub_visited.name, hub_connection.name)
@@ -322,6 +477,13 @@ class Solver:
         return True
 
     def clean_dist_hubs(self) -> None:
+        """Reset ``dist_hubs`` before searching a path for a drone.
+
+        The start hub gets distance 0 and every other usable hub gets an
+        unknown distance and no previous hub. Blocked and unreachable hubs
+        are left out.
+        """
+
         self.dist_hubs[self.start_hub] = DistInfo(0, None)
         for hub in list(self.list_hub):
             if hub.zone_type != "blocked" and hub.name in self.graph:
@@ -329,8 +491,32 @@ class Solver:
         self.dist_hubs[self.end_hub] = DistInfo(None, None)
 
     def create_drone_turns(self, drone: Drone) -> None:
+        """Build the turn-by-turn timeline of a drone.
+
+        Follows ``drone.path``. For each step the drone waits in the current
+        hub (its name is repeated in the timeline) until the connection and
+        the destination have room at the arrival turn. For a restricted zone
+        the connection name ``<zone1>-<zone2>`` is added for the turn the
+        drone spends in flight. The result is saved in ``drone.turns``, where
+        the index is the turn number and the first item is the start hub.
+
+        Args:
+            drone: Drone whose ``path`` was already computed.
+        """
 
         def check_hub(prev: Hub, hub: Hub, turn: int) -> bool:
+            """Check if a drone can arrive at a hub at a given turn.
+
+            Args:
+                prev: Hub where the move starts.
+                hub: Destination hub.
+                turn: Turn of arrival at ``hub``.
+
+            Returns:
+                True if the connection and the destination have enough capacity
+                (the end hub has no limit), False otherwise.
+            """
+
             if not self.check_connection(prev, hub, turn):
                 return False
             if hub == self.end_hub:
@@ -359,6 +545,15 @@ class Solver:
         drone.turns = turns
 
     def find_path(self) -> None:
+        """Compute the path and the timeline of every drone.
+
+        Creates the drones and, for each one, searches the shortest path
+        with the current occupancy, creates its turns and reserves them so
+        that the following drones avoid it.
+
+        Raises:
+            ValueError: If no valid path can be found.
+        """
 
         self.create_drones(self.nb_drones)
 

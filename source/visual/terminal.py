@@ -18,20 +18,53 @@ from dataclasses import dataclass
 
 @dataclass
 class BenchmarkMap:
+    """Reference data and result for one benchmark map.
+
+    Attributes:
+        target_turns: Maximum number of turns expected for the map.
+        path: Path of the map file.
+        achieved_turns: Number of turns obtained by the solver.
+    """
+
     target_turns: int
     path: str
     achieved_turns: int = 0
 
 
 class TerminalOutput:
+    """Print the simulation in the terminal and run the benchmark.
+
+    Attributes:
+        list_drones: Drones with their timelines already computed.
+        start_hub: Starting zone.
+        map_file: Name of the map file (without its directory).
+    """
+
     def __init__(self, list_drones: list[Drone], start_hub: Hub,
                  map_file: str) -> None:
+        """Create the terminal output.
+
+        Args:
+            list_drones: Drones with their timelines already computed.
+            start_hub: Starting zone.
+            map_file: Path of the map file; only its name is kept.
+        """
+
         self.list_drones = list_drones
         self.start_hub = start_hub
         self.map_file = map_file.split("/")[-1]
 
     @staticmethod
     def find_total_turns(list_drones: list[Drone]) -> int:
+        """Compute the total number of simulation turns.
+
+        Args:
+            list_drones: Drones with their timelines already computed.
+
+        Returns:
+            The number of turns until the last drone arrives.
+        """
+
         total_turns = 0
 
         for drone in list_drones:
@@ -42,10 +75,25 @@ class TerminalOutput:
 
     def output(self, list_drones: list[Drone], start_hub: Hub,
                map_file: str) -> str:
-        total_turns = self.find_total_turns(list_drones)
-        output = ""
+        """Build the text of the simulation.
 
-        output += f"\nMap file: {map_file.split('/')[-1]}\n"
+        Each turn is one line, starting with its number, followed by the
+        moves ``D<id>-<zone>`` (or ``D<id>-<connection>`` when in flight) of
+        the drones that moved in that turn. Drones that stay in place are
+        omitted. The map name and the total number of turns are included.
+
+        Args:
+            list_drones: Drones with their timelines already computed.
+            start_hub: Starting zone.
+            map_file: Path or name of the map file.
+
+        Returns:
+            The complete simulation text.
+        """
+
+        total_turns = self.find_total_turns(list_drones)
+
+        output = f"\nMap file: {map_file.split('/')[-1]}\n"
 
         for i in range(total_turns + 1):
             if i != 0:
@@ -61,11 +109,24 @@ class TerminalOutput:
         return output
 
     def print_terminal(self) -> None:
+        """Print the simulation in the terminal."""
+
         print("FLY-IN SIMULATION")
         print(self.output(self.list_drones, self.start_hub, self.map_file))
 
     def save_output_benchmark_file(self, list_drones: list[Drone],
                                    start_hub: Hub, map_file: str) -> None:
+        """Append a simulation to ``benchmark_output.txt``.
+
+        Writes a header if the file is empty and a separator after the
+        simulation text.
+
+        Args:
+            list_drones: Drones with their timelines already computed.
+            start_hub: Starting zone.
+            map_file: Path or name of the map file.
+        """
+
         output = self.output(list_drones, start_hub, map_file)
         flag_empty = False
         with open("benchmark_output.txt", "r") as f:
@@ -79,6 +140,13 @@ class TerminalOutput:
             f.write("\n" + "=" * 58)
 
     def performance_benchmark(self) -> None:
+        """Run the solver on all the reference maps and report the result.
+
+        Each map is parsed and solved, and its simulation is saved in
+        ``benchmark_output.txt``. At the end, a table with the target turns,
+        the achieved turns and a Pass/Fail status per map (easy, medium, hard
+        and challenger) is printed and appended to the same file.
+        """
 
         easy_maps: list[BenchmarkMap] = [
             BenchmarkMap(6, "maps/easy/01_linear_path.txt"),
