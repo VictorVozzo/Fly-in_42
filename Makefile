@@ -6,7 +6,7 @@
 #   By: vivozzo- <vivozzo-@student.42porto.com>      +#+  +:+       +#+        #
 #                                                  +#+#+#+#+#+   +#+           #
 #   Created: 0026/09/18 16:01:03 by ivozzo-             #+#    #+#             #
-#   Updated: 2026/10/29 11:14:17 by vivozzo-           ###   ########.fr       #
+#   Updated: 2026/11/02 13:44:53 by vivozzo-           ###   ########.fr       #
 #                                                                              #
 # **************************************************************************** #
 
@@ -35,14 +35,10 @@ all: install
 $(VENV_BIN)/activate:
 	python3 -m venv $(VENV_DIR)
 
-# #ERASE THIS TWO LINES BEFORE DELIVER THE PROJECT:
-# $(VENV_BIN)/activate:
-# 	~/.local/python3.12/bin/python3.12 -m venv $(VENV_DIR)    
-
 install: $(VENV_BIN)/activate
-	$(PIP) install --upgrade pip >/dev/null 2>&1
-	$(PIP) install flake8 mypy >/dev/null 2>&1
-	$(PIP) install pygame >/dev/null 2>&1
+	$(PIP) install --upgrade pip
+	$(PIP) install flake8 mypy
+	$(PIP) install pygame
 
 run:
 	@$(PYTHON) $(MAIN) $(ARGS) 
