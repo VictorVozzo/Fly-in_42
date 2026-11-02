@@ -6,7 +6,7 @@
 #   By: vivozzo- <vivozzo-@student.42porto.com>     +#+  +:+       +#+        #
 #                                                 +#+#+#+#+#+   +#+           #
 #   Created: 2026/09/17 17:03:18 by vivozzo-           #+#    #+#             #
-#   Updated: 2026/10/29 13:52:43 by vivozzo-          ###   ########.fr       #
+#   Updated: 2026/11/02 11:59:03 by vivozzo-          ###   ########.fr       #
 #                                                                             #
 # *************************************************************************** #
 
@@ -692,13 +692,13 @@ class VisualOutput:
             text = font_zone_legend.render(
                 legend[0], False, "black")
             text_rect = text.get_rect(
-                bottomleft=(20, height - 30))
+                bottomleft=(20, height - 100))
             legend_rect.append(text_rect)
             screen.blit(text, text_rect)
 
             for i in range(len(legend) - 1):
                 text = font_zone_legend.render(legend[i + 1], False, "black")
-                text_rect = text.get_rect(bottomleft=(20, height - 30))
+                text_rect = text.get_rect(bottomleft=(20, height - 100))
                 legend_rect.append(text_rect)
                 text_rect.left = (legend_rect[i].right +
                                   legend_padding)
