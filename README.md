@@ -18,6 +18,10 @@ A graph-based drone routing simulator. It reads a map of connected zones, routes
 9. [Technical choices](#technical-choices)
 10. [Resources](#resources)
 
+## Visual output demo
+
+https://github.com/user-attachments/assets/50fe15c7-0cb6-4d99-90cd-4fed6449e7ba
+
 ## Description
 
 **Goal.** Given a network of zones (a graph) and a fleet of `nb_drones` drones that all start in the same zone, move every drone to the end zone in the **fewest possible simulation turns**, while respecting every rule of the subject:
