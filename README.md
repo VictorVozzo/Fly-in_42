@@ -5,6 +5,11 @@
 
 A graph-based drone routing simulator. It reads a map of connected zones, routes a whole fleet of drones from the start zone to the end zone in as few simulation turns as possible, and shows the result both as a turn-by-turn log in the terminal and as an interactive graphical window.
 
+
+## Visual output demo
+
+https://github.com/user-attachments/assets/50fe15c7-0cb6-4d99-90cd-4fed6449e7ba
+
 ## Table of contents
 
 1. [Description](#description)
@@ -17,10 +22,6 @@ A graph-based drone routing simulator. It reads a map of connected zones, routes
 8. [Project structure](#project-structure)
 9. [Technical choices](#technical-choices)
 10. [Resources](#resources)
-
-## Visual output demo
-
-https://github.com/user-attachments/assets/50fe15c7-0cb6-4d99-90cd-4fed6449e7ba
 
 ## Description
 
