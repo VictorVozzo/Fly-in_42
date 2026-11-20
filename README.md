@@ -8,7 +8,7 @@ A graph-based drone routing simulator. It reads a map of connected zones, routes
 
 ## Visual output demo
 
-https://github.com/user-attachments/assets/50fe15c7-0cb6-4d99-90cd-4fed6449e7ba
+https://github.com/user-attachments/assets/030957fb-f74e-47eb-906a-56448db5b983
 
 ## Table of contents
 
